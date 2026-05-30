@@ -1,0 +1,45 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon.tech requires connection pooling via the pooler URL for serverless
+  // directUrl = env("DIRECT_URL") // uncomment if using Neon pooler + migrations
+}
+
+model ProductionOrder {
+  id           String   @id @default(cuid())
+
+  // PI = Proforma Invoice — the primary order identifier at SNY
+  piNumber     String
+  // Sub-line index within a PI (0-based). A PI can have multiple fabric specs.
+  subLineIndex Int      @default(0)
+
+  // Order info
+  customer     String
+  orderDate    DateTime
+
+  // Fabric specs
+  widthM       Float    // roll width in metres (e.g. 4.0)
+  lengthM      Float    // order length in metres
+  gsm          Int      // grams per square metre (e.g. 165)
+  color        String   // e.g. "BLACK", "WHITE"
+
+  // Workflow status
+  status       String   @default("PENDING") // PENDING | IN_PRODUCTION | DONE | CANCELLED
+
+  // Timestamps
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Composite unique constraint: one PI can have many sub-lines but each (PI, subLine) is unique
+  @@unique([piNumber, subLineIndex])
+  @@index([piNumber])
+  @@index([orderDate])
+  @@map("production_orders")
+}
