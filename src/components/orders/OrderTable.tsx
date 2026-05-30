@@ -5,6 +5,7 @@
 // Receives pre-fetched, serialized orders from the Server Component parent.
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import type { SerializedProductionOrder } from '@/types'
 
 interface OrderTableProps {
@@ -29,6 +30,7 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 export default function OrderTable({ orders }: OrderTableProps) {
+  const router = useRouter()
   const [query, setQuery] = useState('')
 
   const filtered = useMemo(() => {
@@ -150,7 +152,12 @@ export default function OrderTable({ orders }: OrderTableProps) {
               filtered.map((order) => (
                 <tr
                   key={`${order.piNumber}-${order.subLineIndex}`}
-                  className="bg-slate-950 hover:bg-slate-900/60 transition-colors"
+                  className="bg-slate-950 hover:bg-slate-800/80 transition-colors cursor-pointer"
+                  onClick={() => router.push(`/orders/${order.id}`)}
+                  role="button"
+                  aria-label={`View order ${order.piNumber}`}
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') router.push(`/orders/${order.id}`) }}
                 >
                   {/* PI Number + sub-line badge */}
                   <td className="px-4 py-3 font-mono text-slate-200 whitespace-nowrap">
