@@ -3,6 +3,7 @@
 // No "use client" — this runs only on the server.
 
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import type { SerializedProductionOrder } from '@/types'
 import OrderTable from '@/components/orders/OrderTable'
@@ -33,6 +34,8 @@ export default async function OrdersPage() {
       orderDate: o.orderDate.toISOString(),
       createdAt: o.createdAt.toISOString(),
       updatedAt: o.updatedAt.toISOString(),
+      // Prisma.Decimal is not JSON-serializable — convert to string (or null)
+      uvPct: o.uvPct != null ? o.uvPct.toString() : null,
     }))
   } catch (err) {
     console.error('[OrdersPage] DB fetch failed:', err)
@@ -52,13 +55,11 @@ export default async function OrdersPage() {
           </p>
         </div>
 
-        {/* New Order — disabled until S2 */}
-        <button
+        {/* New Order — now active (S2) */}
+        <Link
           id="btn-new-order"
-          disabled
-          className="inline-flex items-center gap-2 bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          title="Coming in next update"
-          aria-disabled="true"
+          href="/orders/new"
+          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           <svg
             className="w-4 h-4"
@@ -75,7 +76,7 @@ export default async function OrdersPage() {
             />
           </svg>
           New Order
-        </button>
+        </Link>
       </div>
 
       {/* DB error banner */}

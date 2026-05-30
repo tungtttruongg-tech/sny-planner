@@ -6,21 +6,24 @@
 import type { Prisma } from '@prisma/client'
 
 /**
- * Full ProductionOrder as returned by Prisma (Date objects for timestamps).
- * Use this type inside Server Components where Date objects are fine.
+ * Full ProductionOrder as returned by Prisma (Date objects for timestamps,
+ * Prisma.Decimal for uvPct).
+ * Use this type inside Server Components where native types are fine.
  */
 export type ProductionOrder = Prisma.ProductionOrderGetPayload<object>
 
 /**
  * Serialized version of ProductionOrder safe to pass from a Server Component
- * to a Client Component as props. All Date fields are converted to ISO strings
- * to avoid Next.js hydration warnings about non-plain objects.
+ * to a Client Component as props. All non-plain-object types are converted:
+ *   - Date fields → ISO string
+ *   - Prisma.Decimal (uvPct) → string | null  (Decimal serialises as string over JSON)
  */
 export type SerializedProductionOrder = Omit<
   ProductionOrder,
-  'orderDate' | 'createdAt' | 'updatedAt'
+  'orderDate' | 'createdAt' | 'updatedAt' | 'uvPct'
 > & {
   orderDate: string
   createdAt: string
   updatedAt: string
+  uvPct: string | null
 }

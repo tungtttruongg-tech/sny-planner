@@ -30,6 +30,13 @@ model ProductionOrder {
   gsm          Int      // grams per square metre (e.g. 165)
   color        String   // e.g. "BLACK", "WHITE"
 
+  // Optional order details (added S2)
+  qty          Int?                  // quantity in rolls
+  uvPct        Decimal?  @db.Decimal(5, 2) // UV treatment percentage 0-100
+  frFlag       Boolean   @default(false)   // flame-retardant treatment
+  description  String?               // free-text order description
+  remark       String?               // free-text internal remark
+
   // Workflow status
   status       String   @default("PENDING") // PENDING | IN_PRODUCTION | DONE | CANCELLED
 
