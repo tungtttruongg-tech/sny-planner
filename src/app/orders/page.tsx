@@ -83,6 +83,14 @@ export default async function OrdersPage() {
         <div className="flex items-center gap-md mt-1">
           <ImportOrdersModal />
           <Link
+            id="btn-bulk-paste"
+            href="/orders/bulk"
+            className="inline-flex items-center gap-sm border-[0.5px] border-outline-variant bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface text-label-md font-inter font-medium px-md py-sm rounded-lg transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">content_paste</span>
+            Bulk paste
+          </Link>
+          <Link
             id="btn-new-order"
             href="/orders/new"
             className="inline-flex items-center gap-sm bg-primary-container text-on-primary rounded-lg px-md py-sm text-label-md font-inter font-medium hover:opacity-90 transition-opacity"
