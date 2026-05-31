@@ -27,3 +27,24 @@ export type SerializedProductionOrder = Omit<
   updatedAt: string
   uvPct: string | null
 }
+
+/**
+ * A single row parsed from the ORDER_LIST Excel file.
+ * Plain JSON-serializable — travels from server parser → client preview → server confirm.
+ * All required fields are non-nullable after parsing; optional fields may be null.
+ */
+export interface ParsedOrder {
+  piNumber: string
+  subLineIndex: number
+  customer: string
+  orderDate: string        // YYYY-MM-DD
+  widthM: number
+  lengthM: number
+  gsm: number
+  color: string
+  qty: number | null
+  uvPct: number | null     // stored as-is (0.02 = 2%)
+  frFlag: boolean
+  description: string | null
+  remark: string | null
+}
