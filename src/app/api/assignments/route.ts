@@ -1,0 +1,122 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { createAssignmentSchema } from "@/lib/validations/assignment";
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const year = searchParams.get("year");
+    const month = searchParams.get("month"); // 0-indexed month
+
+    let whereClause: any = {};
+
+    if (year && month) {
+      const y = parseInt(year, 10);
+      const m = parseInt(month, 10);
+
+      if (!isNaN(y) && !isNaN(m)) {
+        // Construct Vietnam time boundary
+        // Start of month
+        const monthStartStr = `${y}-${String(m + 1).padStart(2, '0')}-01T00:00:00+07:00`;
+        const monthStart = new Date(monthStartStr);
+
+        // Start of next month
+        const nextMonthM = m === 11 ? 0 : m + 1;
+        const nextMonthY = m === 11 ? y + 1 : y;
+        const nextMonthStartStr = `${nextMonthY}-${String(nextMonthM + 1).padStart(2, '0')}-01T00:00:00+07:00`;
+        const nextMonthStart = new Date(nextMonthStartStr);
+
+        whereClause = {
+          startDate: { lt: nextMonthStart },
+          endDate: { gte: monthStart },
+        };
+      }
+    }
+
+    const assignments = await prisma.machineAssignment.findMany({
+      where: whereClause,
+      include: {
+        order: {
+          select: {
+            id: true,
+            piNumber: true,
+            customer: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(assignments);
+  } catch (error) {
+    console.error("[GET_ASSIGNMENTS]", error);
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const result = createAssignmentSchema.safeParse(body);
+
+    if (!result.success) {
+      return NextResponse.json(
+        { message: "Invalid input", errors: result.error.issues },
+        { status: 400 }
+      );
+    }
+
+    const { machineId, orderId, startDate, endDate } = result.data;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (start > end) {
+      return NextResponse.json(
+        { message: "Start date must be before or equal to end date" },
+        { status: 400 }
+      );
+    }
+
+    // Check overlap
+    console.log("OVERLAP CHECK TRIGGERED");
+    const existing = await prisma.machineAssignment.findFirst({
+      where: {
+        machineId,
+        startDate: { lte: end },
+        endDate: { gte: start },
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { message: "Máy đã được xếp lịch trong khoảng thời gian này" },
+        { status: 409 }
+      );
+    }
+
+    // Insert
+    const assignment = await prisma.machineAssignment.create({
+      data: {
+        machineId,
+        orderId,
+        startDate: start,
+        endDate: end,
+      },
+      include: {
+        order: true,
+      },
+    });
+
+    return NextResponse.json(assignment, { status: 201 });
+  } catch (error: any) {
+    console.error("[POST_ASSIGNMENTS]", error);
+    // If unique constraint fails (e.g., orderId already assigned)
+    if (error?.code === 'P2002') {
+      return NextResponse.json(
+        { message: "Order is already assigned to a machine" },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+  }
+}

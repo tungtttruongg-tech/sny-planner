@@ -8,22 +8,22 @@
 
 ## 0. TL;DR for agent
 Build a web app to replace Excel for a PP mesh factory (SNY).
-Currently in **Sprint S3** — order detail page: view mode, edit mode via pencil icon, delete with confirmation.
-Phase 1 goal = endusers enter data into the tool instead of Excel. NO automation. NO calculations yet.
-All business formulas are defined but NOT implemented in Phase 1.
+Currently in **M2 — Machine Schedule Functional** sprint.
+Phase 1 complete (S0–S5). UI redesigned (R1 Korean minimal light theme).
+Bulk paste import built and working.
 When in doubt → STOP and ask. Do not guess.
 
 ---
 
 ## 1. Project & roles
 - **Project name:** SNY Planner Tool
-- **Client:** SNY VINA — PP mesh (lưới nhựa HDPE) factory, Vietnam. Website: snyvina.net.co
-- **Vendor:** TESO. **Dev:** Tung — PM managing TESO, also direct builder via Antigravity.
+- **Client:** SNY VINA — PP mesh factory, Vietnam. Website: snyvina.net.co
+- **Vendor:** TESO. **Dev:** Tung — PM + direct builder via Antigravity.
 - **Pipeline:** Claude (plan/review) → Antigravity + Gemini 3 Pro (build) → Cursor (review + commit GitHub) → Vercel (deploy)
 - **Repo:** https://github.com/tungtttruongg-tech/sny-planner
-- **Database:** Neon.tech PostgreSQL (project: sny-planner, region: Singapore)
+- **Database:** Neon.tech PostgreSQL (Singapore region)
 - **Live URL:** https://sny-planner.vercel.app
-- **MVP purpose:** Reference for TESO production version + direct handover to SNY endusers.
+- **Tagged:** v1.0-phase1-complete
 
 ---
 
@@ -31,96 +31,69 @@ When in doubt → STOP and ask. Do not guess.
 Replace 4 disconnected Excel files with 1 system.
 Flow: Sales Order → Production Order → Machine Schedule → Material Planning.
 
-**Phase 1 goal (current):** Endusers stop using Excel. Enter data into tool. Get familiar.
-**Phase 2 goal (later):** AI reads historical data entered in Phase 1. Automates calculations.
-
-DO NOT build Phase 2 features in Phase 1. No AI suggestions, no auto-scheduling, no formula automation.
+**Phase 1 (DONE):** Endusers enter data into tool. Stop using Excel.
+**Current focus:** M2 Machine Schedule — assign orders to machines manually.
+**Phase 2 (later):** AI automation, auto-scheduling, formula calculations.
 
 ---
 
 ## 3. What is already built — DO NOT rebuild
 
-### S0 ✅ — Scaffold
+### S0 ✅ Scaffold
 - Next.js 14 App Router + TypeScript + Tailwind
-- Prisma 5.22.0 + Neon PostgreSQL connected
-- Basic nav shell: Orders / Schedule (MOCK) / Materials (MOCK)
-- `.env` + `.env.local` configured with DATABASE_URL
+- Prisma 5.22.0 + Neon PostgreSQL
+- `.env` + `.env.local` with DATABASE_URL
 
-### S1 ✅ — Order list
-- `src/app/orders/page.tsx` — server component, fetches all orders via Prisma
-- `src/components/orders/OrderTable.tsx` — client component, 7-column table + live search
-- Search by PI Number OR Customer simultaneously
-- Shows "Showing X of Y orders" count
+### S1 ✅ Order list
+- `src/app/orders/page.tsx` — server component, KPI cards, table
+- `src/components/orders/OrderTable.tsx` — search by PI/Customer
 
-### S2 ✅ — New order form
-- `src/app/orders/new/page.tsx` — new order page
-- `src/components/orders/NewOrderForm.tsx` — form with react-hook-form + zod
-- `src/app/api/orders/route.ts` — POST handler, saves to DB
-- `src/lib/validations/order.ts` — Zod schemas (createOrderSchema)
-- On success: green banner + auto-clear form after 2 seconds
-- Duplicate PI + sub-line handled with clear error message
-- "New Order" button in list links to /orders/new
+### S2 ✅ New order form
+- `src/app/orders/new/page.tsx`
+- `src/components/orders/NewOrderForm.tsx` — react-hook-form + zod
+- `src/app/api/orders/route.ts` — POST handler
+
+### S3 ✅ Order detail
+- `src/app/orders/[id]/page.tsx`
+- `src/components/orders/OrderDetail.tsx` — VIEW + EDIT + DELETE
+- `src/app/api/orders/[id]/route.ts` — GET/PATCH/DELETE
+
+### S4 ✅ Mock pages
+- `src/app/schedule/page.tsx` — will be replaced by M2 functional
+- `src/app/materials/page.tsx` — MOCK (Phase 2)
+
+### S5 ✅ Excel import
+- `src/app/api/orders/import/route.ts` — parse preview
+- `src/app/api/orders/import/confirm/route.ts` — full file import
+- `src/components/orders/ImportOrdersModal.tsx`
+- `src/lib/excel/parseOrderList.ts`
+
+### R1 ✅ UI Redesign (Korean minimal light theme)
+- `src/app/layout.tsx` — top nav + side nav structure
+- `src/components/layout/TopNav.tsx` — fixed 64px top nav
+- `src/components/layout/SideNav.tsx` — fixed 280px side nav, all items → /orders
+- `tailwind.config.ts` — full design system tokens
+- Light theme: background #fbf9f8, primary navy #002444
+
+### Bulk Paste ✅
+- `src/app/orders/bulk/page.tsx` — paste from Excel → preview → import
+- `src/app/api/orders/bulk/route.ts` — POST handler
+- `src/lib/excel/parsePastedText.ts` — tab-separated parser
 
 ### Packages installed (do NOT reinstall)
 - next@14.2.35, react, react-dom, typescript, tailwindcss
 - prisma@5.22.0, @prisma/client@5.22.0
-- react-hook-form@7.x, zod@4.x, @hookform/resolvers@3.x
-- tsx (for seed runner)
+- react-hook-form@7.x, zod@4.x, @hookform/resolvers
+- xlsx (SheetJS), tsx
 
-### package.json build script
+### package.json build script (DO NOT change)
 ```
 "build": "prisma generate && next build"
 ```
-This is required for Vercel. DO NOT change it.
 
 ---
 
-## 4. Current scope — Phase 1 only
-
-### What endusers need to enter per order (7 core fields)
-
-| # | Field | Type | Notes |
-|---|---|---|---|
-| 1 | PI Number | Text | Unique order ID e.g. "PI-2026-001" |
-| 2 | Sub-line | Int | Default 1. Same PI can have multiple sub-lines |
-| 3 | Customer | Text | Customer name |
-| 4 | Order Date | Date | |
-| 5 | Width (m) | Decimal | e.g. 4.0 |
-| 6 | Length (m) | Decimal | e.g. 12000 |
-| 7 | GSM | Integer | e.g. 165 |
-| 8 | Color | Text | e.g. "BLACK" |
-
-### Optional fields (in DB, enter when available)
-- qty (Int), uvPct (Decimal), frFlag (Boolean), description (String), remark (String)
-
-### Important: 1 PI can have multiple sub-lines
-Unique key: `[piNumber, subLineIndex]`
-
-### Modules
-| Module | Phase 1 status | Notes |
-|---|---|---|
-| M1 — Production Orders | **FUNCTIONAL** | CRUD complete after S3 |
-| M2 — Machine Schedule | **MOCK ONLY** | Grid display, no real logic |
-| M3 — Materials | **MOCK ONLY** | Static display, no real logic |
-
-M2 and M3 MUST show label: `MOCK — NO CALCULATION LOGIC YET`
-
----
-
-## 5. Business formulas (defined but NOT implemented in Phase 1)
-DO NOT implement these now. Phase 2 only.
-
-```
-qtySqm         = qty × widthM × lengthM
-totalWeightKgs = qtySqm × gsm / 1000
-yarnPerBeam    = (widthCm × lossFactor × needles × looms) / 2.54 / beamCount
-meterPerBeam   = kg × 9,000,000 / yarnCount / denier
-kgPerBeam      = meter × yarnCount × denier / 9,000,000
-```
-
----
-
-## 6. Database schema (current — Prisma 5.22.0 on Neon.tech)
+## 4. Database schema (current)
 
 ```prisma
 model ProductionOrder {
@@ -133,136 +106,172 @@ model ProductionOrder {
   lengthM      Decimal
   gsm          Int
   color        String
-
-  // Optional fields (added in S2)
   qty          Int?
   uvPct        Decimal?  @db.Decimal(5,2)
   frFlag       Boolean   @default(false)
   description  String?
   remark       String?
-
-  // Audit
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-
   @@unique([piNumber, subLineIndex])
 }
 ```
 
-Rules:
-- Use `Decimal` for all quantity/measurement fields. NEVER `Float`.
-- Unique key: `[piNumber, subLineIndex]`
-- NO auth model in Phase 1
+**Next schema addition for M2:**
+```prisma
+model MachineAssignment {
+  id          String   @id @default(cuid())
+  machineId   String   // "M-001" to "M-040"
+  orderId     String
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  order       ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  @@unique([machineId, startDate])
+}
+```
 
 ---
 
-## 7. Tech stack (fixed — do NOT propose changes)
+## 5. Tech stack (fixed — do NOT change)
 - **Framework:** Next.js 14 App Router + TypeScript
-- **Styling:** Tailwind CSS
+- **Styling:** Tailwind CSS (custom design tokens in tailwind.config.ts)
 - **Database:** PostgreSQL (Neon.tech) + Prisma 5.22.0
-- **Form:** react-hook-form + zod (v4) + @hookform/resolvers
-- **Deploy:** Vercel (github auto-deploy on push to main)
+- **Form:** react-hook-form + zod v4
+- **Deploy:** Vercel (auto-deploy from GitHub main)
+- **Fonts:** Inter + Noto Sans KR + Material Symbols Outlined (via Google Fonts link in layout.tsx)
 - **NO auth in Phase 1**
 
 ---
 
-## 8. Project folder structure (current state)
+## 6. Design system (R1 — Korean minimal light theme)
+
+### Key colors
+```
+primary: "#002444"          // navy
+primary-container: "#1b3a5c"
+on-primary: "#ffffff"
+background: "#fbf9f8"       // warm white
+surface: "#fbf9f8"
+surface-container-lowest: "#ffffff"
+surface-container-low: "#f6f3f2"
+surface-container: "#f0eded"
+on-surface: "#1b1c1c"
+secondary: "#5e5e5e"
+outline-variant: "#c3c6cf"
+error: "#ba1a1a"
+```
+
+### Layout
+- Top nav: fixed, 64px height, `bg-surface`
+- Side nav: fixed left, 280px width, starts at top 64px
+- Main content: `pl-[280px] pt-[64px]`
+- Material Symbols icons: `<span className="material-symbols-outlined">icon_name</span>`
+
+---
+
+## 7. Current sprint — M2 Machine Schedule Functional
+
+### Business rules (confirmed)
+- 40 machines: M-001 to M-040 (fixed, no DB table)
+- Each slot = 1 machine × 1 day
+- Each slot: max 1 order
+- Assignment: orderId + machineId + startDate + endDate
+- 1 order → 1 machine at a time
+- Planner assigns manually — no auto-scheduling
+
+### What to build
+1. Add `MachineAssignment` model to schema → `npx prisma db push`
+2. API: GET/POST `/api/assignments` + DELETE `/api/assignments/[id]`
+3. Schedule page: 40×days grid, click cell → assign/view modal
+4. Remove MOCK banner — this is now real
+5. AssignModal: select order + end date → save
+6. DetailModal: view assignment → remove
+
+### Prompt file
+`ANTIGRAVITY_PROMPT_M2.md` already written and ready to paste into Antigravity.
+
+---
+
+## 8. Project folder structure
 
 ```
 sny-planner/
 ├── CLAUDE.md
-├── .env                         ← Has DATABASE_URL (Prisma reads this)
-├── .env.local                   ← Also has DATABASE_URL (Next.js reads this)
-├── .env.example
-├── .gitignore
-├── package.json                 ← build: "prisma generate && next build"
-│
-├── prisma/
-│   ├── schema.prisma
-│   └── seed.ts                  ← 5 sample orders
-│
-├── docs/specs/
-│   ├── s0-scaffold.md
-│   ├── s1-order-list.md
-│   └── s2-new-order-form.md
-│
+├── .env / .env.local        ← DATABASE_URL (both needed)
+├── package.json             ← build: "prisma generate && next build"
+├── prisma/schema.prisma
 ├── src/
 │   ├── app/
-│   │   ├── page.tsx             ← redirect to /orders
-│   │   ├── orders/
-│   │   │   ├── page.tsx         ← Order list (S1)
-│   │   │   ├── new/page.tsx     ← New order form (S2)
-│   │   │   └── [id]/page.tsx    ← Order detail ← BUILD THIS IN S3
-│   │   ├── schedule/page.tsx    ← MOCK
-│   │   ├── materials/page.tsx   ← MOCK
-│   │   └── api/orders/
-│   │       ├── route.ts         ← POST (S2)
-│   │       └── [id]/route.ts    ← GET/PATCH/DELETE ← BUILD THIS IN S3
-│   │
-│   ├── components/orders/
-│   │   ├── OrderTable.tsx       ← S1 (UPDATE in S3: make rows clickable)
-│   │   ├── NewOrderForm.tsx     ← S2
-│   │   └── OrderDetail.tsx      ← BUILD THIS IN S3
-│   │
-│   ├── lib/
-│   │   ├── db.ts
-│   │   └── validations/order.ts ← createOrderSchema (ADD updateOrderSchema in S3)
-│   │
-│   └── types/index.ts
+│   │   ├── orders/          ← list, new, [id], bulk
+│   │   ├── schedule/        ← M2 (currently mock, building functional)
+│   │   ├── materials/       ← MOCK
+│   │   └── api/
+│   │       ├── orders/      ← DO NOT MODIFY existing routes
+│   │       └── assignments/ ← NEW for M2
+│   ├── components/
+│   │   ├── layout/          ← TopNav.tsx, SideNav.tsx
+│   │   ├── orders/          ← OrderTable, NewOrderForm, OrderDetail, ImportOrdersModal
+│   │   └── schedule/        ← NEW: AssignModal.tsx, DetailModal.tsx
+│   └── lib/
+│       ├── db.ts
+│       ├── validations/order.ts
+│       └── excel/           ← parseOrderList.ts, parsePastedText.ts
 ```
 
 ---
 
-## 9. Sprint plan — Phase 1
+## 9. Sprint history
 
-| Sprint | Task | Status |
-|---|---|---|
-| S0 | Scaffold + DB + nav shell | ✅ DONE |
-| S1 | Order list + search | ✅ DONE |
-| S2 | New order form + save to DB | ✅ DONE |
-| **S3** | **Order detail: view + edit + delete** | ⏳ CURRENT |
-| S4 | M2 + M3 mock pages | ⏳ |
-| S5 | Excel import 20 sample rows | ⏳ |
+| Sprint | Status |
+|---|---|
+| S0 Scaffold | ✅ Done |
+| S1 Order list | ✅ Done |
+| S2 New order form | ✅ Done |
+| S3 Order detail | ✅ Done |
+| S4 M2/M3 mock | ✅ Done |
+| S5 Excel import | ✅ Done |
+| R1 UI redesign | ✅ Done |
+| Bulk paste import | ✅ Done |
+| **M2 Machine Schedule** | ⏳ CURRENT |
+| M3 Materials functional | ⏳ Phase 2 |
+| AI automation | ⏳ Phase 2 |
 
 ---
 
 ## 10. OUT OF SCOPE — refuse even if asked
 - ❌ Auth / login / roles (Phase 2)
-- ❌ Auto-calculate qtySqm / totalWeightKgs (Phase 2)
-- ❌ Work Order computation (Phase 2)
+- ❌ Auto-calculate formulas (Phase 2)
 - ❌ AI scheduling suggestions (Phase 2)
-- ❌ M2 / M3 real logic (Phase 2)
-- ❌ Statistical reports
-- ❌ Real-time / websockets
-- ❌ Mobile-first responsive (desktop-first is fine)
-- ❌ Migrate all 3,609 historical orders (only 20 sample rows for testing)
-- ❌ Multi-tenancy
+- ❌ M3 real inventory logic (Phase 2)
 - ❌ Bulk delete / bulk edit
-
-If asked → add to `docs/backlog-phase2.md`, do NOT build.
+- ❌ Real-time / websockets
+- ❌ Mobile responsive (desktop-first)
+- ❌ Multi-tenancy
 
 ---
 
 ## 11. Code rules (hard)
-1. Every npm package must be REAL. If unsure → mark `[UNVERIFIED]`, ask Tung.
+1. Every npm package must be REAL. Mark `[UNVERIFIED]` if unsure.
 2. NEVER hardcode secrets. Use `.env` or `.env.local`.
-3. NEVER use absolute paths. Relative paths + `path.join` only.
-4. NEVER swallow errors silently. Every catch must log with context.
+3. NEVER use absolute paths.
+4. NEVER swallow errors silently.
 5. Files > 150 lines → split.
 6. Business logic comments in Vietnamese. Boilerplate in English.
 7. Zod validation on both client AND server.
 8. Query via Prisma only. NO raw SQL string concat.
 9. NEVER `dangerouslySetInnerHTML` with user input.
-10. NEVER delete files or drop DB without Tung's confirmation.
+10. NEVER delete files or DB without Tung's confirmation.
 
 ---
 
 ## 12. When to STOP and ask Tung
-1. Any spec is ambiguous — do NOT guess
-2. Need to add a new npm package — list it + URL first
-3. About to edit `CLAUDE.md`, `schema.prisma`, `.env` — always ask
-4. Any command with `rm`, `delete`, `drop`, `truncate` — always ask
-5. Test fails twice in a row — stop, don't patch blindly
+1. Spec is ambiguous
+2. Need new npm package — list URL first
+3. About to modify existing API routes in `src/app/api/orders/`
+4. Any `rm`, `delete`, `drop`, `truncate` command
+5. Test fails twice
 
 Format:
 ```
@@ -270,11 +279,3 @@ Format:
 I need to know: [max 3 questions]
 My recommendation: [option A / option B]
 ```
-
----
-
-## 13. Commit convention
-- `[ai-generated]` for Antigravity files
-- `[human]` for files Tung wrote manually
-- Commit after each sprint
-- Tag `v1.0-phase1-complete` when S0–S5 all done

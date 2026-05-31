@@ -1,13 +1,11 @@
 'use client'
 
-// src/app/schedule/page.tsx
-// M2 — Machine Schedule mock page (R1 light theme).
-// "use client" required for useState month navigation. All logic unchanged.
-// NOTE: metadata export not allowed in Client Components — root layout title is used.
+import { useState, useEffect } from 'react'
+import { isSameDay, startOfDay } from 'date-fns'
+import AssignModal from '@/components/schedule/AssignModal'
+import DetailModal, { AssignmentDetail } from '@/components/schedule/DetailModal'
 
-import { useState } from 'react'
-
-// ── Helpers (unchanged) ───────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function daysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate()
@@ -32,18 +30,68 @@ export default function SchedulePage() {
     return new Date(now.getFullYear(), now.getMonth(), 1)
   })
 
+  const [assignments, setAssignments] = useState<AssignmentDetail[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Modals state
+  const [isAssignOpen, setIsAssignOpen] = useState(false)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [selectedMachine, setSelectedMachine] = useState('')
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [selectedAssignment, setSelectedAssignment] = useState<AssignmentDetail | null>(null)
+
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
   const totalDays = daysInMonth(year, month)
   const days = Array.from({ length: totalDays }, (_, i) => i + 1)
 
+  const fetchAssignments = async () => {
+    setIsLoading(true)
+    try {
+      const res = await fetch(`/api/assignments?year=${year}&month=${month}`)
+      if (res.ok) {
+        const data = await res.json()
+        setAssignments(data)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAssignments()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, month])
+
   const goPrev = () => setViewDate(new Date(year, month - 1, 1))
   const goNext = () => setViewDate(new Date(year, month + 1, 1))
 
+  const handleCellClick = (machineId: string, date: Date) => {
+    const assignment = getAssignment(machineId, date)
+    if (assignment) {
+      setSelectedAssignment(assignment)
+      setIsDetailOpen(true)
+    } else {
+      setSelectedMachine(machineId)
+      setSelectedDate(date)
+      setIsAssignOpen(true)
+    }
+  }
+
+  const getAssignment = (machineId: string, date: Date) => {
+    return assignments.find(a => {
+      if (a.machineId !== machineId) return false
+      const start = startOfDay(new Date(a.startDate))
+      const end = startOfDay(new Date(a.endDate))
+      const d = startOfDay(date)
+      return d >= start && d <= end
+    })
+  }
+
   return (
     <div className="px-container-margin py-xl">
-
-      {/* Page header */}
       <div className="mb-lg">
         <h1 className="text-display font-inter font-semibold text-primary tracking-tight">
           Machine schedule
@@ -53,30 +101,11 @@ export default function SchedulePage() {
         </p>
       </div>
 
-      {/* MOCK banner — amber light theme */}
-      <div
-        role="alert"
-        className="flex items-start gap-sm border border-[#F59E0B] bg-[#FFF8E7] rounded-lg px-md py-sm mb-lg"
-      >
-        <span className="material-symbols-outlined text-[20px] text-[#92400E] shrink-0 mt-0.5">warning</span>
-        <div>
-          <p className="text-label-md font-inter font-semibold text-[#92400E]">
-            MOCK — NO CALCULATION LOGIC YET
-          </p>
-          <p className="text-label-sm font-inter text-[#92400E]/80 mt-0.5">
-            Scheduling logic will be implemented in a future sprint. No real data is shown here.
-          </p>
-        </div>
-      </div>
-
-      {/* Month navigation */}
       <div className="flex items-center justify-between mb-md">
         <div className="flex items-center gap-sm">
           <button
-            id="btn-prev-month"
             onClick={goPrev}
-            aria-label="Previous month"
-            className="w-8 h-8 flex items-center justify-center rounded-lg border-[0.5px] border-outline-variant hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg border-[0.5px] border-outline-variant hover:bg-surface-container text-on-surface-variant transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">chevron_left</span>
           </button>
@@ -84,45 +113,39 @@ export default function SchedulePage() {
             {formatMonthLabel(viewDate)}
           </h2>
           <button
-            id="btn-next-month"
             onClick={goNext}
-            aria-label="Next month"
-            className="w-8 h-8 flex items-center justify-center rounded-lg border-[0.5px] border-outline-variant hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg border-[0.5px] border-outline-variant hover:bg-surface-container text-on-surface-variant transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">chevron_right</span>
           </button>
         </div>
-        <p className="text-label-sm font-inter text-secondary">
-          {totalDays} days · {MACHINES.length} machines
-        </p>
+        <div className="flex items-center gap-md">
+          {isLoading && <span className="text-label-sm text-secondary animate-pulse">Loading...</span>}
+          <p className="text-label-sm font-inter text-secondary">
+            {totalDays} days · {MACHINES.length} machines
+          </p>
+        </div>
       </div>
 
-      {/* Schedule grid */}
-      <div className="overflow-x-auto rounded-lg border-[0.5px] border-outline-variant bg-surface-container-lowest">
-        <table className="border-collapse text-xs">
+      <div className="overflow-x-auto rounded-lg border-[0.5px] border-outline-variant bg-surface-container-lowest shadow-sm">
+        <table className="border-collapse text-xs w-full">
           <thead>
             <tr className="bg-surface-container border-b-[0.5px] border-outline-variant">
-              {/* Machine label header */}
-              <th
-                scope="col"
-                className="sticky left-0 z-10 bg-surface-container border-r-[0.5px] border-outline-variant px-md py-sm text-left text-label-sm font-inter font-medium text-secondary uppercase tracking-widest min-w-[88px]"
-              >
+              <th className="sticky left-0 z-20 bg-surface-container border-r-[0.5px] border-outline-variant px-md py-sm text-left text-label-sm font-inter font-medium text-secondary uppercase tracking-widest min-w-[88px]">
                 Machine
               </th>
-              {/* Day headers */}
               {days.map((day) => {
                 const weekend = isWeekend(year, month, day)
                 const dow = new Date(year, month, day).getDay()
                 return (
                   <th
                     key={day}
-                    scope="col"
-                    className={`w-8 min-w-[32px] py-1 text-center font-medium border-r-[0.5px] border-outline-variant/60 last:border-r-0 ${
+                    className={`w-10 min-w-[40px] py-1.5 text-center font-medium border-r-[0.5px] border-outline-variant/60 last:border-r-0 ${
                       weekend ? 'text-outline' : 'text-on-surface-variant'
                     }`}
                   >
-                    <div>{day}</div>
-                    <div className={`text-[10px] leading-none ${weekend ? 'text-outline-variant' : 'text-outline'}`}>
+                    <div className="text-body-sm">{day}</div>
+                    <div className={`text-[10px] leading-none mt-0.5 ${weekend ? 'text-outline-variant' : 'text-outline'}`}>
                       {DAY_ABBR[dow]}
                     </div>
                   </th>
@@ -130,30 +153,51 @@ export default function SchedulePage() {
               })}
             </tr>
           </thead>
-          <tbody className="divide-y divide-[0.5px] divide-outline-variant/50">
+          <tbody className="divide-y divide-[0.5px] divide-outline-variant/50 relative z-0">
             {MACHINES.map((machine, rowIdx) => (
-              <tr
-                key={machine}
-                className={rowIdx % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface-container-low/40'}
-              >
-                {/* Machine label — sticky left */}
-                <td
-                  className={`sticky left-0 z-10 border-r-[0.5px] border-outline-variant px-md py-1.5 font-mono text-type-mono text-on-surface-variant whitespace-nowrap ${
+              <tr key={machine} className={rowIdx % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface-container-low/40'}>
+                <td className={`sticky left-0 z-10 border-r-[0.5px] border-outline-variant px-md py-1.5 font-mono text-type-mono text-on-surface-variant whitespace-nowrap ${
                     rowIdx % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-[#f8f6f5]'
-                  }`}
-                >
+                  }`}>
                   {machine}
                 </td>
-                {/* Empty day cells */}
                 {days.map((day) => {
+                  const date = new Date(year, month, day)
                   const weekend = isWeekend(year, month, day)
+                  const assignment = getAssignment(machine, date)
+                  
+                  if (assignment) {
+                    const isStart = isSameDay(startOfDay(new Date(assignment.startDate)), date)
+                    const isEnd = isSameDay(startOfDay(new Date(assignment.endDate)), date)
+                    const showLabel = isStart || day === 1
+                    
+                    return (
+                      <td key={day} className={`border-r-[0.5px] border-outline-variant/40 p-0 last:border-r-0 ${weekend ? 'bg-surface-container/60' : ''}`}>
+                        <div 
+                          onClick={() => handleCellClick(machine, date)}
+                          className={`h-7 mx-0.5 my-0.5 flex items-center cursor-pointer transition-opacity hover:opacity-80
+                            ${isStart ? 'rounded-l-md ml-1' : ''}
+                            ${isEnd ? 'rounded-r-md mr-1' : ''}
+                            bg-primary text-on-primary
+                          `}
+                        >
+                          {showLabel ? (
+                            <span className="text-[10px] font-medium px-1.5 truncate leading-none pt-0.5">
+                              {assignment.order.piNumber}
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                    )
+                  }
+
                   return (
                     <td
                       key={day}
-                      className={`w-8 h-8 border-r-[0.5px] border-outline-variant/40 last:border-r-0 ${
+                      onClick={() => handleCellClick(machine, date)}
+                      className={`h-9 border-r-[0.5px] border-outline-variant/40 last:border-r-0 cursor-pointer hover:bg-surface-container-high/50 transition-colors ${
                         weekend ? 'bg-surface-container/60' : ''
                       }`}
-                      aria-label={`${machine} day ${day}`}
                     />
                   )
                 })}
@@ -163,11 +207,20 @@ export default function SchedulePage() {
         </table>
       </div>
 
-      {/* Footer note */}
-      <p className="mt-md text-label-sm font-inter text-outline">
-        This is a mock layout. Real scheduling logic will be implemented in Phase 2.
-        Weekend columns are shaded.
-      </p>
+      <AssignModal 
+        isOpen={isAssignOpen} 
+        onClose={() => setIsAssignOpen(false)} 
+        machineId={selectedMachine}
+        startDate={selectedDate}
+        onSuccess={fetchAssignments}
+      />
+
+      <DetailModal
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        assignment={selectedAssignment}
+        onSuccess={fetchAssignments}
+      />
     </div>
   )
 }

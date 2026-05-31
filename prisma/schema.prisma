@@ -40,6 +40,9 @@ model ProductionOrder {
   // Workflow status
   status       String   @default("PENDING") // PENDING | IN_PRODUCTION | DONE | CANCELLED
 
+  // Relations
+  assignment   MachineAssignment?
+
   // Timestamps
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -49,4 +52,21 @@ model ProductionOrder {
   @@index([piNumber])
   @@index([orderDate])
   @@map("production_orders")
+}
+
+model MachineAssignment {
+  id        String   @id @default(cuid())
+  machineId String   // e.g. "M-001" to "M-040"
+  
+  orderId   String   @unique
+  order     ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  startDate DateTime
+  endDate   DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([machineId, startDate])
+  @@map("machine_assignments")
 }

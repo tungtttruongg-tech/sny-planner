@@ -1,0 +1,242 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { format } from 'date-fns'
+import { getUnassignedOrders } from '@/app/schedule/actions'
+
+export type AssignmentDetail = {
+  id: string
+  machineId: string
+  startDate: string
+  endDate: string
+  order: {
+    id: string
+    piNumber: string
+    customer: string
+  }
+}
+
+type Order = { id: string; piNumber: string; customer: string }
+
+interface Props {
+  isOpen: boolean
+  onClose: () => void
+  assignment: AssignmentDetail | null
+  onSuccess: () => void
+}
+
+export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: Props) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+
+  // Edit state
+  const [orders, setOrders] = useState<Order[]>([])
+  const [selectedOrderId, setSelectedOrderId] = useState('')
+  const [editEndDate, setEditEndDate] = useState('')
+
+  useEffect(() => {
+    if (isOpen && assignment) {
+      setIsEditing(false)
+      setError('')
+      setSelectedOrderId(assignment.order.id)
+      setEditEndDate(format(new Date(assignment.endDate), 'yyyy-MM-dd'))
+    }
+  }, [isOpen, assignment])
+
+  const handleEditClick = async () => {
+    setIsEditing(true)
+    try {
+      const unassigned = await getUnassignedOrders()
+      const currentOrder = assignment!.order
+      const allOptions = [
+        currentOrder,
+        ...unassigned.filter(o => o.id !== currentOrder.id)
+      ]
+      setOrders(allOptions)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!assignment) return
+    setError('')
+    setIsLoading(true)
+
+    try {
+      const parsedStart = new Date(format(new Date(assignment.startDate), 'yyyy-MM-dd'))
+      const parsedEnd = new Date(editEndDate)
+
+      if (parsedEnd < parsedStart) {
+        setError('End Date cannot be before Start Date')
+        setIsLoading(false)
+        return
+      }
+
+      const endISO = new Date(`${editEndDate}T00:00:00+07:00`).toISOString()
+
+      const res = await fetch(`/api/assignments/${assignment.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: selectedOrderId,
+          endDate: endISO
+        })
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to update assignment')
+      }
+      onSuccess()
+      onClose()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleUnassign = async () => {
+    if (!assignment) return
+    if (!confirm('Are you sure you want to remove this assignment?')) return
+    
+    setIsLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/assignments/${assignment.id}`, {
+        method: 'DELETE'
+      })
+      if (!res.ok) throw new Error('Failed to remove assignment')
+      onSuccess()
+      onClose()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (!isOpen || !assignment) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-surface rounded-xl shadow-lg w-full max-w-sm overflow-hidden">
+        <div className="px-md py-sm border-b-[0.5px] border-outline-variant flex justify-between items-center">
+          <h3 className="text-headline-sm font-inter font-semibold text-on-surface">
+            {isEditing ? 'Edit Assignment' : 'Assignment Details'}
+          </h3>
+          <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+        
+        {isEditing ? (
+          <form onSubmit={handleEditSubmit} className="p-md">
+            {error && (
+              <div className="mb-md p-sm rounded-lg bg-[#FFF8E7] border border-[#F59E0B] text-[#92400E] text-label-sm">
+                {error}
+              </div>
+            )}
+            
+            <div className="space-y-md">
+              <div>
+                <label className="block text-label-sm font-medium text-secondary mb-xs">Machine</label>
+                <input type="text" disabled value={assignment.machineId} className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline-variant bg-surface-container-lowest text-on-surface-variant font-mono text-type-mono" />
+              </div>
+
+              <div>
+                <label className="block text-label-sm font-medium text-secondary mb-xs">Order</label>
+                <select 
+                  required
+                  value={selectedOrderId} 
+                  onChange={e => setSelectedOrderId(e.target.value)}
+                  className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none text-body-md"
+                >
+                  <option value="">Select an order...</option>
+                  {orders.map(o => (
+                    <option key={o.id} value={o.id}>{o.piNumber} ({o.customer})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-sm">
+                <div className="flex-1">
+                  <label className="block text-label-sm font-medium text-secondary mb-xs">Start Date</label>
+                  <input type="text" disabled value={format(new Date(assignment.startDate), 'dd/MM/yyyy')} className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline-variant bg-surface-container-lowest text-on-surface-variant" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-label-sm font-medium text-secondary mb-xs">End Date</label>
+                  <input 
+                    type="date" 
+                    required
+                    min={format(new Date(assignment.startDate), 'yyyy-MM-dd')}
+                    value={editEndDate}
+                    onChange={e => setEditEndDate(e.target.value)}
+                    className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary outline-none" 
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-xl flex justify-end gap-sm">
+              <button type="button" onClick={() => setIsEditing(false)} className="px-md py-sm rounded-lg font-medium text-on-surface-variant hover:bg-surface-container transition-colors">
+                Cancel
+              </button>
+              <button type="submit" disabled={isLoading} className="px-md py-sm rounded-lg font-medium bg-primary text-on-primary hover:bg-primary/90 disabled:opacity-50 transition-colors">
+                {isLoading ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="p-md space-y-md">
+            {error && (
+              <div className="p-sm rounded-lg bg-[#FFF8E7] border border-[#F59E0B] text-[#92400E] text-label-sm">
+                {error}
+              </div>
+            )}
+
+            <div>
+              <p className="text-label-sm font-medium text-secondary mb-1">Order</p>
+              <p className="text-body-lg font-semibold text-on-surface">{assignment.order.piNumber}</p>
+              <p className="text-body-sm text-on-surface-variant">{assignment.order.customer}</p>
+            </div>
+
+            <div>
+              <p className="text-label-sm font-medium text-secondary mb-1">Machine</p>
+              <p className="text-body-md font-mono text-type-mono text-on-surface">{assignment.machineId}</p>
+            </div>
+
+            <div>
+              <p className="text-label-sm font-medium text-secondary mb-1">Duration</p>
+              <p className="text-body-md text-on-surface">
+                {format(new Date(assignment.startDate), 'dd/MM/yyyy')} — {format(new Date(assignment.endDate), 'dd/MM/yyyy')}
+              </p>
+            </div>
+
+            <div className="pt-sm flex gap-sm">
+              <button 
+                onClick={handleEditClick}
+                disabled={isLoading}
+                className="flex-1 flex items-center justify-center gap-2 px-md py-sm rounded-lg font-medium border border-primary text-primary hover:bg-primary/5 disabled:opacity-50 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">edit</span>
+                Edit
+              </button>
+              <button 
+                onClick={handleUnassign}
+                disabled={isLoading}
+                className="flex-1 flex items-center justify-center gap-2 px-md py-sm rounded-lg font-medium border border-error/50 text-error hover:bg-error/10 disabled:opacity-50 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">delete</span>
+                Remove
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
