@@ -1,6 +1,5 @@
 // src/app/materials/page.tsx
-// M3 — Materials mock page.
-// Pure Server Component — 100% static data, no DB, no client state.
+// M3 — Materials mock page (R1 light theme). Pure Server Component — logic unchanged.
 
 import type { Metadata } from 'next'
 
@@ -9,56 +8,48 @@ export const metadata: Metadata = {
   description: 'Materials tracking view — mock data only in Phase 1.',
 }
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
+// ── Mock data (unchanged) ─────────────────────────────────────────────────────
 
 type StockStatus = 'OK' | 'LOW' | 'CRITICAL'
 
 interface MockMaterial {
-  code: string
-  type: string
-  stockKg: number
-  status: StockStatus
+  code: string; type: string; stockKg: number; status: StockStatus
 }
 
 const MOCK_MATERIALS: MockMaterial[] = [
-  { code: 'MF-PP-01',    type: 'Nhựa MF',       stockKg: 8500, status: 'OK' },
-  { code: 'MB-IM-B045',  type: 'Master Batch',   stockKg: 120,  status: 'LOW' },
-  { code: 'MB-PF960N',   type: 'Master Batch',   stockKg: 200,  status: 'OK' },
-  { code: 'FR-001',      type: 'Fire Retardant',  stockKg: 200,  status: 'LOW' },
-  { code: 'UV-PP-01',    type: 'Nhựa UV',         stockKg: 45,   status: 'CRITICAL' },
+  { code: 'MF-PP-01',   type: 'Nhựa MF',        stockKg: 8500, status: 'OK'       },
+  { code: 'MB-IM-B045', type: 'Master Batch',    stockKg: 120,  status: 'LOW'      },
+  { code: 'MB-PF960N',  type: 'Master Batch',    stockKg: 200,  status: 'OK'       },
+  { code: 'FR-001',     type: 'Fire Retardant',  stockKg: 200,  status: 'LOW'      },
+  { code: 'UV-PP-01',   type: 'Nhựa UV',         stockKg: 45,   status: 'CRITICAL' },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<StockStatus, { label: string; cls: string }> = {
-  OK:       { label: 'OK',       cls: 'bg-emerald-900/50 text-emerald-300 border border-emerald-500/30' },
-  LOW:      { label: 'LOW',      cls: 'bg-amber-900/50   text-amber-300   border border-amber-500/30'   },
-  CRITICAL: { label: 'CRITICAL', cls: 'bg-red-900/50     text-red-300     border border-red-500/30'     },
+  OK:       { label: 'OK',       cls: 'bg-[#f0fdf4] text-[#15803d] border border-[#22c55e]/30' },
+  LOW:      { label: 'LOW',      cls: 'bg-[#FFF8E7] text-[#92400E] border border-[#F59E0B]/40' },
+  CRITICAL: { label: 'CRITICAL', cls: 'bg-error-container text-error border border-error/30'    },
 }
 
 function StatusBadge({ status }: { status: StockStatus }) {
   const { label, cls } = STATUS_CONFIG[status]
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold tracking-wide ${cls}`}>
+    <span className={`inline-flex items-center px-sm py-xs rounded text-label-sm font-inter font-semibold tracking-wide ${cls}`}>
       {label}
     </span>
   )
 }
 
-// ── Summary card ─────────────────────────────────────────────────────────────
+// ── Summary card ──────────────────────────────────────────────────────────────
 
-interface SummaryCardProps {
-  label: string
-  value: number
-  accent: string   // Tailwind text-color class
-  bgAccent: string // Tailwind bg/border accent
-}
+interface SummaryCardProps { label: string; value: number; accent: string; border: string }
 
-function SummaryCard({ label, value, accent, bgAccent }: SummaryCardProps) {
+function SummaryCard({ label, value, accent, border }: SummaryCardProps) {
   return (
-    <div className={`rounded-xl border ${bgAccent} bg-slate-900/50 px-5 py-4`}>
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{label}</p>
-      <p className={`text-3xl font-bold ${accent}`}>{value}</p>
+    <div className={`bg-surface-container-lowest border-[0.5px] ${border} rounded-xl px-lg py-md`}>
+      <p className="text-label-sm font-inter font-medium text-secondary uppercase tracking-widest mb-sm">{label}</p>
+      <p className={`text-headline-lg font-inter font-semibold tabular-nums ${accent}`}>{value}</p>
     </div>
   )
 }
@@ -71,98 +62,77 @@ export default function MaterialsPage() {
   const critCount = MOCK_MATERIALS.filter((m) => m.status === 'CRITICAL').length
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-[1440px] mx-auto px-container-margin py-xl">
+
       {/* Page header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Materials</h1>
-        <p className="text-slate-400 mt-1 text-sm">Yarn and material tracking</p>
+      <div className="mb-lg">
+        <h1 className="text-display font-inter font-semibold text-primary tracking-tight">Materials</h1>
+        <p className="text-body-md font-noto text-secondary mt-xs">Yarn and material tracking</p>
       </div>
 
-      {/* MOCK banner */}
+      {/* MOCK banner — amber light theme */}
       <div
         role="alert"
-        className="flex items-start gap-3 border border-amber-500/40 bg-amber-500/10 rounded-xl px-5 py-4 mb-8"
+        className="flex items-start gap-sm border border-[#F59E0B] bg-[#FFF8E7] rounded-lg px-md py-sm mb-lg"
       >
-        <span className="text-amber-400 text-xl mt-0.5 shrink-0" aria-hidden="true">⚠</span>
+        <span className="material-symbols-outlined text-[20px] text-[#92400E] shrink-0 mt-0.5">warning</span>
         <div>
-          <p className="text-amber-300 font-semibold text-sm">
+          <p className="text-label-md font-inter font-semibold text-[#92400E]">
             MOCK — NO CALCULATION LOGIC YET
           </p>
-          <p className="text-amber-400/70 text-xs mt-0.5">
+          <p className="text-label-sm font-inter text-[#92400E]/80 mt-0.5">
             Materials calculation will be implemented in a future sprint. No real data is shown here.
           </p>
         </div>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <SummaryCard
-          label="Total Materials"
-          value={total}
-          accent="text-slate-200"
-          bgAccent="border-slate-800"
-        />
-        <SummaryCard
-          label="Low Stock Items"
-          value={lowCount}
-          accent="text-amber-300"
-          bgAccent="border-amber-500/30"
-        />
-        <SummaryCard
-          label="Critical Items"
-          value={critCount}
-          accent="text-red-300"
-          bgAccent="border-red-500/30"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-md mb-lg">
+        <SummaryCard label="Total Materials" value={total}    accent="text-on-surface"    border="border-outline-variant" />
+        <SummaryCard label="Low Stock Items" value={lowCount} accent="text-[#92400E]"     border="border-[#F59E0B]/40"   />
+        <SummaryCard label="Critical Items"  value={critCount} accent="text-error"         border="border-error/30"       />
       </div>
 
       {/* Materials table */}
-      <div className="overflow-x-auto rounded-xl border border-slate-800">
-        <table className="w-full text-sm">
+      <div className="bg-surface-container-lowest border-[0.5px] border-outline-variant rounded-lg overflow-hidden">
+        <table className="w-full">
           <thead>
-            <tr className="border-b border-slate-800 bg-slate-900">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Material Code
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Type
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Current Stock (kg)
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Status
-              </th>
+            <tr className="bg-surface-container border-b-[0.5px] border-outline-variant">
+              {['Material Code', 'Type', 'Current Stock (kg)', 'Status'].map((h, i) => (
+                <th
+                  key={h}
+                  className={`px-md py-sm text-label-sm font-inter font-medium text-secondary uppercase tracking-widest ${
+                    i === 2 ? 'text-right' : 'text-left'
+                  }`}
+                >
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/70">
+          <tbody className="divide-y divide-[0.5px] divide-outline-variant">
             {MOCK_MATERIALS.map((mat, idx) => (
               <tr
                 key={mat.code}
-                className={idx % 2 === 0 ? 'bg-slate-950' : 'bg-slate-900/30'}
+                className={idx % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface-container-low/40'}
               >
-                <td className="px-4 py-3 font-mono text-slate-200 whitespace-nowrap">
-                  {mat.code}
-                </td>
-                <td className="px-4 py-3 text-slate-300 whitespace-nowrap">
-                  {mat.type}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums text-slate-300">
+                <td className="px-md py-sm font-mono text-type-mono text-on-surface whitespace-nowrap">{mat.code}</td>
+                <td className="px-md py-sm text-body-md font-noto text-on-surface whitespace-nowrap">{mat.type}</td>
+                <td className="px-md py-sm text-right font-mono text-type-mono text-on-surface tabular-nums">
                   {mat.stockKg.toLocaleString()}
                 </td>
-                <td className="px-4 py-3">
-                  <StatusBadge status={mat.status} />
-                </td>
+                <td className="px-md py-sm"><StatusBadge status={mat.status} /></td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
 
-      {/* Footer note */}
-      <p className="mt-4 text-xs text-slate-600">
-        This is mock data. Real inventory will be connected in Phase 2.
-      </p>
+        <div className="border-t-[0.5px] border-outline-variant px-md py-sm bg-surface-container">
+          <p className="text-label-sm font-inter text-secondary">
+            Mock data — {MOCK_MATERIALS.length} materials. Real inventory connected in Phase 2.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

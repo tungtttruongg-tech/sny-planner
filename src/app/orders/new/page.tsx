@@ -1,5 +1,5 @@
 // src/app/orders/new/page.tsx
-// Server component wrapper for the New Order form page.
+// Server component wrapper — New Order form page (R1 light theme).
 
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -12,36 +12,32 @@ export const metadata: Metadata = {
 
 export default function NewOrderPage() {
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-[800px] mx-auto px-container-margin py-xl">
+
       {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="mb-6">
-        <ol className="flex items-center gap-2 text-sm text-slate-500">
+      <nav aria-label="Breadcrumb" className="mb-lg">
+        <ol className="flex items-center gap-sm text-label-md font-inter text-on-surface-variant">
           <li>
-            <Link href="/orders" className="hover:text-slate-300 transition-colors">
-              Production Orders
+            <Link href="/orders" className="hover:text-primary transition-colors">
+              Production orders
             </Link>
           </li>
           <li aria-hidden="true">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <span className="material-symbols-outlined text-[16px] text-outline">chevron_right</span>
           </li>
-          <li className="text-slate-300 font-medium" aria-current="page">
-            New Order
+          <li className="text-on-surface font-medium" aria-current="page">
+            New order
           </li>
         </ol>
       </nav>
 
-      {/* Page header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">New Production Order</h1>
-        <p className="text-slate-400 mt-1 text-sm">
-          Fill in the required fields and click Save Order to create a new order.
-        </p>
-      </div>
+      {/* Page title */}
+      <h1 className="text-headline-lg font-inter font-semibold text-on-surface mb-lg">
+        New production order
+      </h1>
 
       {/* Form card */}
-      <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 sm:p-8">
+      <div className="bg-surface-container-lowest border-[0.5px] border-outline-variant rounded-lg p-lg md:p-[32px]">
         <NewOrderForm />
       </div>
     </div>

@@ -1,9 +1,8 @@
 'use client'
 
 // src/components/orders/NewOrderForm.tsx
-// Client component — New Production Order form.
-// Uses react-hook-form + zod resolver for client-side validation.
-// POSTs to /api/orders, shows success/error banners, auto-clears on success.
+// R1 light theme — all react-hook-form logic unchanged.
+// Only classNames updated: light inputs, Inter/Noto typography, primary buttons.
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -15,7 +14,7 @@ import {
   type CreateOrderOutput,
 } from '@/lib/validations/order'
 
-// ── Reusable field wrapper ───────────────────────────────────────────────────
+// ── Reusable field wrapper ────────────────────────────────────────────────────
 
 interface FieldProps {
   label: string
@@ -27,27 +26,18 @@ interface FieldProps {
 
 function Field({ label, required, error, children, hint }: FieldProps) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+    <div className="flex flex-col gap-xs">
+      <label className="text-label-sm font-inter font-medium text-on-surface-variant focus-within:text-primary transition-colors">
         {label}
-        {required && <span className="text-red-400 ml-1">*</span>}
+        {required && <span className="text-error ml-1" aria-hidden="true">*</span>}
       </label>
       {children}
-      {hint && !error && <p className="text-xs text-slate-500">{hint}</p>}
+      {hint && !error && (
+        <p className="text-label-sm font-inter text-outline">{hint}</p>
+      )}
       {error && (
-        <p className="text-xs text-red-400 flex items-center gap-1" role="alert">
-          <svg
-            className="w-3 h-3 shrink-0"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-            aria-hidden="true"
-          >
-            <path
-              fillRule="evenodd"
-              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-              clipRule="evenodd"
-            />
-          </svg>
+        <p className="text-label-sm font-inter text-error flex items-center gap-xs" role="alert">
+          <span className="material-symbols-outlined text-[14px]">error</span>
           {error}
         </p>
       )}
@@ -55,19 +45,18 @@ function Field({ label, required, error, children, hint }: FieldProps) {
   )
 }
 
-// ── Shared input class builder ───────────────────────────────────────────────
+// ── Input class builder ───────────────────────────────────────────────────────
 
-const inputCls = (hasError: boolean) =>
+const inputCls = (isNumeric: boolean, hasError: boolean) =>
   [
-    'w-full bg-slate-800 border rounded-lg px-3 py-2 text-sm text-slate-200',
-    'placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent',
-    'transition-colors',
-    hasError
-      ? 'border-red-500/70 focus:ring-red-500'
-      : 'border-slate-700 focus:ring-blue-500',
+    'w-full bg-transparent border-[0.5px] rounded px-md py-[10px]',
+    'text-on-surface placeholder:text-outline',
+    'focus:outline-none focus:border-primary focus:border-b-2 transition-colors',
+    isNumeric ? 'font-mono text-type-mono tabular-nums' : 'font-noto text-body-md',
+    hasError ? 'border-error' : 'border-outline-variant',
   ].join(' ')
 
-// ── Main component ───────────────────────────────────────────────────────────
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function NewOrderForm() {
   const router = useRouter()
@@ -77,8 +66,7 @@ export default function NewOrderForm() {
   const [apiError, setApiError] = useState<string | null>(null)
   const [showOptional, setShowOptional] = useState(false)
 
-  // useForm<InputType, Context, OutputType> — the correct generic signature for
-  // schemas with transforms (e.g. .trim(), .toUpperCase()) in @hookform/resolvers v5
+  // useForm<InputType, Context, OutputType> — correct generic for schemas with transforms
   const {
     register,
     handleSubmit,
@@ -125,24 +113,23 @@ export default function NewOrderForm() {
         setSubmitStatus('idle')
       }, 3000)
     } catch {
-      setApiError(
-        'Network error — could not reach the server. Please try again.',
-      )
+      setApiError('Network error — could not reach the server. Please try again.')
       setSubmitStatus('error')
     }
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-8">
-      {/* ── Global banners ──────────────────────────────────────────────── */}
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-lg">
+
+      {/* ── Global banners ─────────────────────────────────────────────────── */}
       {submitStatus === 'success' && (
         <div
           role="status"
-          className="flex items-center gap-3 border border-emerald-500/40 bg-emerald-500/10 rounded-xl px-5 py-4"
+          className="flex items-center gap-sm border border-[#22c55e]/40 bg-[#f0fdf4] rounded-lg px-md py-sm"
         >
-          <span className="text-emerald-400 text-xl shrink-0">✓</span>
-          <p className="text-emerald-300 font-semibold text-sm">
-            Order saved successfully — form will clear in 2 seconds
+          <span className="material-symbols-outlined text-[20px] text-[#15803d]">check_circle</span>
+          <p className="text-label-md font-inter font-medium text-[#15803d]">
+            Order saved — form will clear in 2 seconds
           </p>
         </div>
       )}
@@ -150,36 +137,31 @@ export default function NewOrderForm() {
       {submitStatus === 'error' && apiError && (
         <div
           role="alert"
-          className="flex items-start gap-3 border border-red-500/40 bg-red-500/10 rounded-xl px-5 py-4"
+          className="flex items-start gap-sm border border-error/40 bg-error-container rounded-lg px-md py-sm"
         >
-          <span className="text-red-400 text-xl mt-0.5 shrink-0">✕</span>
+          <span className="material-symbols-outlined text-[20px] text-error shrink-0 mt-0.5">error</span>
           <div>
-            <p className="text-red-300 font-semibold text-sm">
-              Could not save order
-            </p>
-            <p className="text-red-400/80 text-xs mt-0.5">{apiError}</p>
+            <p className="text-label-md font-inter font-semibold text-error">Could not save order</p>
+            <p className="text-label-sm font-inter text-on-error-container mt-0.5">{apiError}</p>
           </div>
         </div>
       )}
 
-      {/* ── Required fields ─────────────────────────────────────────────── */}
+      {/* ── Required fields ─────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
-          <span
-            className="w-1.5 h-4 bg-blue-500 rounded-full"
-            aria-hidden="true"
-          />
+        <h2 className="flex items-center gap-sm text-label-sm font-inter font-semibold text-primary uppercase tracking-widest mb-md">
+          <span className="material-symbols-outlined text-[16px]">asterisk</span>
           Required fields
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-[24px] gap-y-lg">
           {/* PI Number */}
           <Field label="PI Number" required error={errors.piNumber?.message}>
             <input
               id="field-piNumber"
               type="text"
               placeholder="e.g. PI-2024-010"
-              className={inputCls(!!errors.piNumber)}
+              className={inputCls(false, !!errors.piNumber)}
               {...register('piNumber')}
             />
           </Field>
@@ -196,7 +178,7 @@ export default function NewOrderForm() {
               type="number"
               min={0}
               step={1}
-              className={inputCls(!!errors.subLineIndex)}
+              className={inputCls(true, !!errors.subLineIndex)}
               {...register('subLineIndex', { valueAsNumber: true })}
             />
           </Field>
@@ -207,7 +189,7 @@ export default function NewOrderForm() {
               id="field-customer"
               type="text"
               placeholder="e.g. ADIDAS VIETNAM"
-              className={inputCls(!!errors.customer)}
+              className={inputCls(false, !!errors.customer)}
               {...register('customer')}
             />
           </Field>
@@ -217,18 +199,13 @@ export default function NewOrderForm() {
             <input
               id="field-orderDate"
               type="date"
-              className={inputCls(!!errors.orderDate)}
+              className={inputCls(false, !!errors.orderDate)}
               {...register('orderDate')}
             />
           </Field>
 
           {/* Width */}
-          <Field
-            label="Width (m)"
-            required
-            error={errors.widthM?.message}
-            hint="Roll width in metres, e.g. 4.0"
-          >
+          <Field label="Width (m)" required error={errors.widthM?.message} hint="Roll width in metres, e.g. 4.0">
             <input
               id="field-widthM"
               type="number"
@@ -236,18 +213,13 @@ export default function NewOrderForm() {
               max={20}
               step={0.1}
               placeholder="e.g. 4.0"
-              className={inputCls(!!errors.widthM)}
+              className={inputCls(true, !!errors.widthM)}
               {...register('widthM', { valueAsNumber: true })}
             />
           </Field>
 
           {/* Length */}
-          <Field
-            label="Length (m)"
-            required
-            error={errors.lengthM?.message}
-            hint="Order length in metres"
-          >
+          <Field label="Length (m)" required error={errors.lengthM?.message} hint="Order length in metres">
             <input
               id="field-lengthM"
               type="number"
@@ -255,18 +227,13 @@ export default function NewOrderForm() {
               max={100000}
               step={1}
               placeholder="e.g. 12000"
-              className={inputCls(!!errors.lengthM)}
+              className={inputCls(true, !!errors.lengthM)}
               {...register('lengthM', { valueAsNumber: true })}
             />
           </Field>
 
           {/* GSM */}
-          <Field
-            label="GSM"
-            required
-            error={errors.gsm?.message}
-            hint="Grams per square metre"
-          >
+          <Field label="GSM" required error={errors.gsm?.message} hint="Grams per square metre">
             <input
               id="field-gsm"
               type="number"
@@ -274,7 +241,7 @@ export default function NewOrderForm() {
               max={500}
               step={1}
               placeholder="e.g. 165"
-              className={inputCls(!!errors.gsm)}
+              className={inputCls(true, !!errors.gsm)}
               {...register('gsm', { valueAsNumber: true })}
             />
           </Field>
@@ -285,45 +252,36 @@ export default function NewOrderForm() {
               id="field-color"
               type="text"
               placeholder="e.g. BLACK"
-              className={inputCls(!!errors.color)}
+              className={inputCls(false, !!errors.color)}
               {...register('color')}
             />
           </Field>
         </div>
       </section>
 
-      {/* ── Optional fields ─────────────────────────────────────────────── */}
-      <section>
+      {/* ── Optional fields ──────────────────────────────────────────────────── */}
+      <section className="border-t-[0.5px] border-outline-variant pt-lg">
         <button
           type="button"
           onClick={() => setShowOptional((v) => !v)}
-          className="flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-slate-200 transition-colors mb-4"
+          className="flex items-center gap-sm text-label-sm font-inter font-medium text-on-surface-variant hover:text-on-surface transition-colors mb-md"
           aria-expanded={showOptional}
         >
-          <svg
-            className={`w-4 h-4 transition-transform duration-200 ${showOptional ? 'rotate-90' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
+          <span
+            className={`material-symbols-outlined text-[18px] transition-transform duration-200 ${
+              showOptional ? 'rotate-180' : ''
+            }`}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-          <span className="flex items-center gap-2">
-            Optional fields
-            <span className="text-xs font-normal text-slate-500">
-              (click to {showOptional ? 'hide' : 'show'})
-            </span>
+            expand_more
+          </span>
+          Optional fields
+          <span className="text-label-sm font-inter text-outline">
+            (click to {showOptional ? 'hide' : 'show'})
           </span>
         </button>
 
         {showOptional && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 border border-slate-800 rounded-xl p-5 bg-slate-900/30">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-[24px] gap-y-lg bg-surface-container-low border-[0.5px] border-outline-variant rounded-lg p-lg">
             {/* Quantity */}
             <Field label="Quantity (rolls)" error={errors.qty?.message}>
               <input
@@ -332,10 +290,9 @@ export default function NewOrderForm() {
                 min={1}
                 step={1}
                 placeholder="e.g. 5"
-                className={inputCls(!!errors.qty)}
+                className={inputCls(true, !!errors.qty)}
                 {...register('qty', {
-                  setValueAs: (v: string) =>
-                    v === '' || v === null ? null : Number(v),
+                  setValueAs: (v: string) => (v === '' || v === null ? null : Number(v)),
                 })}
               />
             </Field>
@@ -349,25 +306,24 @@ export default function NewOrderForm() {
                 max={100}
                 step={0.01}
                 placeholder="e.g. 3.50"
-                className={inputCls(!!errors.uvPct)}
+                className={inputCls(true, !!errors.uvPct)}
                 {...register('uvPct', {
-                  setValueAs: (v: string) =>
-                    v === '' || v === null ? null : Number(v),
+                  setValueAs: (v: string) => (v === '' || v === null ? null : Number(v)),
                 })}
               />
             </Field>
 
-            {/* FR Flag — full-width checkbox */}
-            <div className="sm:col-span-2 flex items-center gap-3">
+            {/* FR Flag */}
+            <div className="sm:col-span-2 flex items-center gap-sm">
               <input
                 id="field-frFlag"
                 type="checkbox"
-                className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer"
+                className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
                 {...register('frFlag')}
               />
               <label
                 htmlFor="field-frFlag"
-                className="text-sm text-slate-300 cursor-pointer select-none"
+                className="text-body-md font-noto text-on-surface cursor-pointer select-none"
               >
                 Flame-Retardant (FR) treatment required
               </label>
@@ -375,16 +331,12 @@ export default function NewOrderForm() {
 
             {/* Description */}
             <div className="sm:col-span-2">
-              <Field
-                label="Description"
-                error={errors.description?.message}
-                hint="Max 200 characters"
-              >
+              <Field label="Description" error={errors.description?.message} hint="Max 200 characters">
                 <textarea
                   id="field-description"
                   rows={2}
                   placeholder="Free-text order description…"
-                  className={`${inputCls(!!errors.description)} resize-none`}
+                  className={`${inputCls(false, !!errors.description)} resize-none`}
                   {...register('description')}
                 />
               </Field>
@@ -392,16 +344,12 @@ export default function NewOrderForm() {
 
             {/* Remark */}
             <div className="sm:col-span-2">
-              <Field
-                label="Remark"
-                error={errors.remark?.message}
-                hint="Max 200 characters"
-              >
+              <Field label="Remark" error={errors.remark?.message} hint="Max 200 characters">
                 <textarea
                   id="field-remark"
                   rows={2}
                   placeholder="Internal remark…"
-                  className={`${inputCls(!!errors.remark)} resize-none`}
+                  className={`${inputCls(false, !!errors.remark)} resize-none`}
                   {...register('remark')}
                 />
               </Field>
@@ -410,12 +358,12 @@ export default function NewOrderForm() {
         )}
       </section>
 
-      {/* ── Action buttons ──────────────────────────────────────────────── */}
-      <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
+      {/* ── Action buttons ───────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-end gap-md pt-md border-t-[0.5px] border-outline-variant">
         <button
           type="button"
           onClick={() => router.push('/orders')}
-          className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+          className="px-md py-sm text-label-md font-inter font-medium text-on-surface-variant hover:text-on-surface transition-colors"
         >
           Cancel
         </button>
@@ -424,39 +372,26 @@ export default function NewOrderForm() {
           id="btn-save-order"
           type="submit"
           disabled={submitStatus === 'saving' || submitStatus === 'success'}
-          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+          className="inline-flex items-center gap-sm bg-primary text-on-primary text-label-md font-inter font-medium px-lg py-sm rounded-lg hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
         >
           {submitStatus === 'saving' ? (
             <>
-              <svg
-                className="w-4 h-4 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                />
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
               Saving…
             </>
           ) : submitStatus === 'success' ? (
             <>
-              <span>✓</span>
+              <span className="material-symbols-outlined text-[18px]">check</span>
               Saved
             </>
           ) : (
-            'Save Order'
+            <>
+              <span className="material-symbols-outlined text-[18px]">save</span>
+              Save order
+            </>
           )}
         </button>
       </div>

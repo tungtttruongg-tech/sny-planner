@@ -4,26 +4,24 @@
 //
 // Excel file structure (ORDER_LIST_OFFICIAL_20232026.xlsx):
 //   Row 0  — title row ("ORDER LIST")    → SKIP
-//   Row 1  — header row                  → SKIP (columns located by fixed index)
+//   Row 1  — header row                  → used to locate columns
 //   Row 2+ — data rows
 //
-// Column mapping (confirmed from actual file):
-//   Col 0: compound row ID (e.g. "Landmasters20-11") → SKIP
-//   Col 1: piNumber (e.g. "Landmasters20-1")
-//   Col 2: subLineIndex (1.0, 2.0...)
-//   Col 3: customer
-//   Col 4: orderDate
-//   Col 5: item (SKIP)
-//   Col 6: description
-//   Col 7: uvPct (0.02 = 2%)
-//   Col 8: frFlag (0 = false, non-zero = true)
-//   Col 9: gsm
-//   Col 10: widthM
-//   Col 11: lengthM
-//   Col 12: color
-//   Col 13: unit (SKIP)
-//   Col 14: qty
-//   Col 28: remark
+// Column mapping (per spec):
+//   "PI NUMBER" col  → compound row ID (e.g. "Landmasters20-11") → SKIP
+//   PI NUMBER col +1 → actual piNumber  (e.g. "Landmasters20-1")
+//   col index 2      → subLineIndex     (1.0, 2.0 …)
+//   "CUSTOMER"       → customer
+//   "Date"           → orderDate (YYYY-MM-DD)
+//   "GSM"            → gsm
+//   "WIDTH\n(M)"     → widthM
+//   "LENGTH\n(M)"    → lengthM
+//   "COLOR"          → color
+//   "UV"             → uvPct  (decimal, 0.02 = 2%)
+//   "FR"             → frFlag (0 = false, non-zero = true)
+//   "QU'TY"          → qty
+//   "DESCRIPTION"    → description
+//   "REMARK"         → remark
 
 import * as XLSX from 'xlsx'
 import type { ParsedOrder } from '@/types'
@@ -50,6 +48,7 @@ function safeInt(v: unknown): number | null {
 
 function safeDate(v: unknown): string | null {
   if (v instanceof Date) {
+    // cellDates: true → JS Date object
     return v.toISOString().slice(0, 10)
   }
   if (typeof v === 'string' && v.trim()) {
@@ -66,9 +65,21 @@ function safeBool(v: unknown): boolean {
   return !isNaN(n) && n !== 0
 }
 
+// ── Column detector ───────────────────────────────────────────────────────────
+
+function findColIdx(
+  headers: unknown[],
+  matcher: (h: string) => boolean,
+): number {
+  return headers.findIndex(
+    (h) => h != null && typeof h === 'string' && matcher(h),
+  )
+}
+
 // ── Main parser ───────────────────────────────────────────────────────────────
 
 export function parseOrderList(buffer: Buffer): ParsedOrder[] {
+  // cellDates: true → Excel date serials become JS Date objects
   const wb = XLSX.read(buffer, { type: 'buffer', cellDates: true })
   const sheetName = wb.SheetNames[0]
   if (!sheetName) {
@@ -80,32 +91,48 @@ export function parseOrderList(buffer: Buffer): ParsedOrder[] {
 
   // Get 2D array: row 0 = title, row 1 = headers, row 2+ = data
   const allRows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
-    header: 1,
-    defval: null,
+    header: 1,   // return arrays, not objects
+    defval: null, // empty cells → null
+    // raw: true is the default → numbers stay numbers, Date objects stay Date objects
   })
 
   if (allRows.length < 3) {
+    // Need at least: title + header + 1 data row
     console.warn('[parseOrderList] Sheet has fewer than 3 rows — no data to parse')
     return []
   }
 
-  // Skip row 0 (title) and row 1 (header) — data starts from row 2
+  const headers = allRows[1] as unknown[]
   const dataRows = allRows.slice(2)
 
-  // ── Fixed column indices (confirmed from actual file) ─────────────────────
-  const COL_PI_NUMBER    = 1   // e.g. "Landmasters20-1"
-  const COL_SUB_LINE     = 2   // e.g. 1.0, 2.0
-  const COL_CUSTOMER     = 3
-  const COL_DATE         = 4
-  const COL_DESCRIPTION  = 6
-  const COL_UV_PCT       = 7   // 0.02 = 2%
-  const COL_FR_FLAG      = 8   // 0 = false, non-zero = true
-  const COL_GSM          = 9
-  const COL_WIDTH        = 10  // WIDTH (M)
-  const COL_LENGTH       = 11  // LENGTH (M)
-  const COL_COLOR        = 12
-  const COL_QTY          = 14  // QU'TY (rolls)
-  const COL_REMARK       = 28
+  // ── Locate columns by header name ─────────────────────────────────────────
+  const piIdColIdx = findColIdx(
+    headers,
+    (h) => h.toUpperCase().includes('PI') && h.toUpperCase().includes('NUMBER'),
+  )
+  // Actual piNumber is in the column AFTER the compound ID column
+  const piNumberColIdx = piIdColIdx >= 0 ? piIdColIdx + 1 : -1
+
+  // subLineIndex is always at index 2 (per spec)
+  const subLineColIdx = 2
+
+  const customerColIdx = findColIdx(headers, (h) => h.toUpperCase() === 'CUSTOMER')
+  const dateColIdx = findColIdx(headers, (h) => h.toLowerCase() === 'date')
+  const gsmColIdx = findColIdx(headers, (h) => h.toUpperCase() === 'GSM')
+  const widthColIdx = findColIdx(headers, (h) => h.toUpperCase().includes('WIDTH'))
+  const lengthColIdx = findColIdx(headers, (h) => h.toUpperCase().includes('LENGTH'))
+  const colorColIdx = findColIdx(headers, (h) => h.toUpperCase() === 'COLOR')
+  const uvColIdx = findColIdx(headers, (h) => h.toUpperCase() === 'UV')
+  const frColIdx = findColIdx(headers, (h) => h.toUpperCase() === 'FR')
+  const qtyColIdx = findColIdx(
+    headers,
+    (h) =>
+      h.toUpperCase().includes("QU'") ||
+      h.toUpperCase() === 'QTY' ||
+      h.toUpperCase().includes('QUANTITY'),
+  )
+  const descColIdx = findColIdx(headers, (h) => h.toUpperCase() === 'DESCRIPTION')
+  const remarkColIdx = findColIdx(headers, (h) => h.toUpperCase() === 'REMARK')
 
   // ── Parse data rows ────────────────────────────────────────────────────────
   const results: ParsedOrder[] = []
@@ -115,17 +142,19 @@ export function parseOrderList(buffer: Buffer): ParsedOrder[] {
     if (!Array.isArray(row)) continue
 
     try {
-      const get = (colIdx: number): unknown => row[colIdx] ?? null
+      const get = (colIdx: number): unknown =>
+        colIdx >= 0 ? row[colIdx] : null
 
-      const piNumber = safeStr(get(COL_PI_NUMBER))
+      // piNumber from the column AFTER the "PI NUMBER" compound ID column
+      const piNumber = piNumberColIdx >= 0 ? safeStr(get(piNumberColIdx)) : null
       if (!piNumber) continue // skip rows with no PI Number
 
-      const customer  = safeStr(get(COL_CUSTOMER)) ?? ''
-      const orderDate = safeDate(get(COL_DATE)) ?? ''
-      const gsm       = safeInt(get(COL_GSM)) ?? 0
-      const widthM    = safeNum(get(COL_WIDTH)) ?? 0
-      const lengthM   = safeNum(get(COL_LENGTH)) ?? 0
-      const color     = (safeStr(get(COL_COLOR)) ?? '').toUpperCase()
+      const customer = safeStr(get(customerColIdx)) ?? ''
+      const orderDate = safeDate(get(dateColIdx)) ?? ''
+      const gsm = safeInt(get(gsmColIdx)) ?? 0
+      const widthM = safeNum(get(widthColIdx)) ?? 0
+      const lengthM = safeNum(get(lengthColIdx)) ?? 0
+      const color = (safeStr(get(colorColIdx)) ?? '').toUpperCase()
 
       // Skip rows missing any required field
       if (!customer || !orderDate || gsm <= 0 || widthM <= 0 || lengthM <= 0) {
@@ -135,18 +164,18 @@ export function parseOrderList(buffer: Buffer): ParsedOrder[] {
 
       results.push({
         piNumber,
-        subLineIndex: safeInt(get(COL_SUB_LINE)) ?? 1,
+        subLineIndex: safeInt(get(subLineColIdx)) ?? 0,
         customer,
         orderDate,
         widthM,
         lengthM,
         gsm,
         color,
-        qty:         safeInt(get(COL_QTY)),
-        uvPct:       safeNum(get(COL_UV_PCT)),
-        frFlag:      safeBool(get(COL_FR_FLAG)),
-        description: safeStr(get(COL_DESCRIPTION)),
-        remark:      safeStr(get(COL_REMARK)),
+        qty: safeInt(get(qtyColIdx)),
+        uvPct: safeNum(get(uvColIdx)),
+        frFlag: safeBool(get(frColIdx)),
+        description: safeStr(get(descColIdx)),
+        remark: safeStr(get(remarkColIdx)),
       })
     } catch (err) {
       console.warn(`[parseOrderList] Row ${i + 2} threw during parse — skipping:`, err)

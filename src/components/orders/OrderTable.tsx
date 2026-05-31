@@ -2,7 +2,8 @@
 
 // src/components/orders/OrderTable.tsx
 // Client component: renders the production orders table with live search.
-// Receives pre-fetched, serialized orders from the Server Component parent.
+// R1 redesign — light theme, navy PI badge, color dots, hover View button.
+// All search/navigation logic unchanged from S1/S3.
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
@@ -21,12 +22,21 @@ function formatDate(iso: string): string {
   })
 }
 
-/** Status badge colour mapping */
-const STATUS_STYLES: Record<string, string> = {
-  PENDING: 'bg-slate-700 text-slate-300',
-  IN_PRODUCTION: 'bg-blue-900/60 text-blue-300',
-  DONE: 'bg-emerald-900/60 text-emerald-300',
-  CANCELLED: 'bg-red-900/40 text-red-400',
+/**
+ * Simple map of colour names → CSS hex for the colour swatch dot.
+ * Falls back to outline for unknown colours.
+ */
+const COLOR_MAP: Record<string, string> = {
+  BLACK:         '#1e293b',
+  WHITE:         '#e2e8f0',
+  RED:           '#ef4444',
+  BLUE:          '#3b82f6',
+  'NAVY BLUE':   '#1e3a5f',
+  GREY:          '#6b7280',
+  'GREY MELANGE':'#9ca3af',
+  GREEN:         '#22c55e',
+  YELLOW:        '#eab308',
+  ORANGE:        '#f97316',
 }
 
 export default function OrderTable({ orders }: OrderTableProps) {
@@ -44,186 +54,162 @@ export default function OrderTable({ orders }: OrderTableProps) {
   }, [orders, query])
 
   return (
-    <div className="space-y-4">
-      {/* Search + count bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+    <div className="space-y-md">
+
+      {/* Search + count row */}
+      <div className="flex items-center gap-md">
         {/* Search input */}
-        <div className="relative flex-1 max-w-sm">
-          <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-500">
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
-              />
-            </svg>
+        <div className="relative flex-1 max-w-md">
+          <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-outline">
+            <span className="material-symbols-outlined text-[18px]">search</span>
           </span>
           <input
             id="search-orders"
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by PI Number or Customer…"
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+            placeholder="Search PI Number or Customer..."
+            className="w-full bg-surface-container-lowest border-[0.5px] border-outline-variant rounded pl-9 pr-4 py-[10px] text-body-md font-noto text-on-surface placeholder:text-outline focus:outline-none focus:border-b-2 focus:border-primary transition-colors"
             aria-label="Search orders by PI Number or Customer"
           />
         </div>
 
         {/* Count */}
-        <p className="text-sm text-slate-400 shrink-0">
+        <p className="text-label-sm font-inter text-secondary shrink-0">
           Showing{' '}
-          <span className="font-semibold text-slate-200">{filtered.length}</span>
+          <span className="font-semibold text-on-surface">{filtered.length}</span>
           {' '}of{' '}
-          <span className="font-semibold text-slate-200">{orders.length}</span>
+          <span className="font-semibold text-on-surface">{orders.length}</span>
           {' '}orders
         </p>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-slate-800">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-800 bg-slate-900">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                PI Number
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Customer
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Order Date
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Width (m)
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Length (m)
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                GSM
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Color
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/70">
-            {filtered.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={7}
-                  className="px-4 py-12 text-center text-slate-500"
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <svg
-                      className="w-8 h-8 text-slate-700"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
-                      />
-                    </svg>
-                    <span>No orders found</span>
-                    {query && (
-                      <button
-                        onClick={() => setQuery('')}
-                        className="text-xs text-blue-400 hover:text-blue-300 underline underline-offset-2"
-                      >
-                        Clear search
-                      </button>
-                    )}
-                  </div>
-                </td>
+      {/* Table card */}
+      <div className="bg-surface-container-lowest border-[0.5px] border-outline-variant rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-surface-container border-b border-[0.5px] border-outline-variant">
+                {['PI Number', 'Customer', 'Order Date', 'Width (m)', 'Length (m)', 'GSM', 'Color', ''].map((h) => (
+                  <th
+                    key={h}
+                    className={`px-md py-sm text-left text-label-sm font-inter font-medium text-secondary uppercase tracking-widest ${
+                      ['Width (m)', 'Length (m)', 'GSM'].includes(h) ? 'text-right' : ''
+                    }`}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ) : (
-              filtered.map((order) => (
-                <tr
-                  key={`${order.piNumber}-${order.subLineIndex}`}
-                  className="bg-slate-950 hover:bg-slate-800/80 transition-colors cursor-pointer"
-                  onClick={() => router.push(`/orders/${order.id}`)}
-                  role="button"
-                  aria-label={`View order ${order.piNumber}`}
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') router.push(`/orders/${order.id}`) }}
-                >
-                  {/* PI Number + sub-line badge */}
-                  <td className="px-4 py-3 font-mono text-slate-200 whitespace-nowrap">
-                    {order.piNumber}
-                    {order.subLineIndex > 0 && (
-                      <span className="ml-2 text-xs bg-slate-800 text-slate-400 rounded px-1.5 py-0.5">
-                        line {order.subLineIndex + 1}
-                      </span>
-                    )}
-                  </td>
-                  {/* Customer */}
-                  <td className="px-4 py-3 text-slate-300 whitespace-nowrap">
-                    {order.customer}
-                  </td>
-                  {/* Order Date */}
-                  <td className="px-4 py-3 text-slate-400 whitespace-nowrap tabular-nums">
-                    {formatDate(order.orderDate)}
-                  </td>
-                  {/* Width */}
-                  <td className="px-4 py-3 text-right text-slate-300 tabular-nums">
-                    {order.widthM.toFixed(1)}
-                  </td>
-                  {/* Length */}
-                  <td className="px-4 py-3 text-right text-slate-300 tabular-nums">
-                    {order.lengthM.toLocaleString()}
-                  </td>
-                  {/* GSM */}
-                  <td className="px-4 py-3 text-right text-slate-300 tabular-nums">
-                    {order.gsm}
-                  </td>
-                  {/* Color */}
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center gap-1.5 text-slate-300">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full border border-slate-600 shrink-0"
-                        style={{
-                          backgroundColor: COLOR_MAP[order.color.toUpperCase()] ?? '#64748b',
-                        }}
-                        aria-hidden="true"
-                      />
-                      {order.color}
-                    </span>
+            </thead>
+            <tbody className="divide-y divide-[0.5px] divide-outline-variant">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-md py-[48px] text-center">
+                    <div className="flex flex-col items-center gap-sm">
+                      <span className="material-symbols-outlined text-[40px] text-outline-variant">search_off</span>
+                      <p className="text-body-md font-noto text-secondary">No orders found</p>
+                      {query && (
+                        <button
+                          onClick={() => setQuery('')}
+                          className="text-label-sm font-inter text-primary hover:underline"
+                        >
+                          Clear search
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filtered.map((order) => (
+                  <tr
+                    key={`${order.piNumber}-${order.subLineIndex}`}
+                    className="group hover:bg-surface-container-low transition-colors cursor-pointer"
+                    onClick={() => router.push(`/orders/${order.id}`)}
+                    role="button"
+                    aria-label={`View order ${order.piNumber}`}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ')
+                        router.push(`/orders/${order.id}`)
+                    }}
+                  >
+                    {/* PI Number — navy badge */}
+                    <td className="px-md py-sm whitespace-nowrap">
+                      <div className="flex items-center gap-sm">
+                        <span className="bg-primary text-on-primary rounded text-label-sm font-inter font-medium px-sm py-xs">
+                          {order.piNumber}
+                        </span>
+                        {order.subLineIndex > 0 && (
+                          <span className="text-label-sm font-inter text-outline bg-surface-container rounded px-xs py-xs">
+                            /{order.subLineIndex}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Customer */}
+                    <td className="px-md py-sm text-body-md font-noto text-on-surface whitespace-nowrap">
+                      {order.customer}
+                    </td>
+
+                    {/* Order Date */}
+                    <td className="px-md py-sm text-label-md font-inter text-on-surface-variant whitespace-nowrap tabular-nums">
+                      {formatDate(order.orderDate)}
+                    </td>
+
+                    {/* Width */}
+                    <td className="px-md py-sm text-right text-type-mono font-mono text-on-surface tabular-nums">
+                      {Number(order.widthM).toFixed(1)}
+                    </td>
+
+                    {/* Length */}
+                    <td className="px-md py-sm text-right text-type-mono font-mono text-on-surface tabular-nums">
+                      {Number(order.lengthM).toLocaleString()}
+                    </td>
+
+                    {/* GSM */}
+                    <td className="px-md py-sm text-right text-type-mono font-mono text-on-surface tabular-nums">
+                      {order.gsm}
+                    </td>
+
+                    {/* Color — dot + name */}
+                    <td className="px-md py-sm">
+                      <span className="inline-flex items-center gap-sm">
+                        <span
+                          className="w-3 h-3 rounded-full border border-outline-variant shrink-0"
+                          style={{ backgroundColor: COLOR_MAP[order.color.toUpperCase()] ?? '#73777f' }}
+                          aria-hidden="true"
+                        />
+                        <span className="text-body-md font-noto text-on-surface">
+                          {order.color}
+                        </span>
+                      </span>
+                    </td>
+
+                    {/* Action — View button, visible on row hover */}
+                    <td className="px-md py-sm text-right whitespace-nowrap">
+                      <span className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-xs text-label-sm font-inter text-primary border border-[0.5px] border-outline-variant rounded px-sm py-xs hover:bg-surface-container">
+                        <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                        View
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Table footer */}
+        {filtered.length > 0 && (
+          <div className="border-t border-[0.5px] border-outline-variant px-md py-sm bg-surface-container">
+            <p className="text-label-sm font-inter text-secondary">
+              Showing {filtered.length} of {orders.length} orders
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
-}
-
-/**
- * Simple map of colour names → CSS hex for the colour swatch dot.
- * Falls back to slate-500 for unknown colours.
- */
-const COLOR_MAP: Record<string, string> = {
-  BLACK: '#1e293b',
-  WHITE: '#f1f5f9',
-  RED: '#ef4444',
-  BLUE: '#3b82f6',
-  'NAVY BLUE': '#1e3a5f',
-  GREY: '#6b7280',
-  'GREY MELANGE': '#9ca3af',
-  GREEN: '#22c55e',
-  YELLOW: '#eab308',
-  ORANGE: '#f97316',
 }

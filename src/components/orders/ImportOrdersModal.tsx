@@ -155,16 +155,13 @@ export default function ImportOrdersModal() {
 
   return (
     <>
-      {/* Trigger button */}
+      {/* Trigger button — outline light style */}
       <button
         id="btn-import-excel"
         onClick={openModal}
-        className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+        className="inline-flex items-center gap-sm border-[0.5px] border-outline-variant bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface text-label-md font-inter font-medium px-md py-sm rounded-lg transition-colors"
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-        </svg>
+        <span className="material-symbols-outlined text-[18px]">upload_file</span>
         Import Excel
       </button>
 
@@ -185,26 +182,21 @@ export default function ImportOrdersModal() {
           />
 
           {/* Card */}
-          <div className="relative bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+          <div className="relative bg-surface-container-lowest border-[0.5px] border-outline-variant rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
 
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
-              <div className="flex items-center gap-3">
-                <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                </svg>
-                <h2 className="text-white font-semibold text-base">Import Excel Orders</h2>
+            <div className="flex items-center justify-between px-lg py-md border-b-[0.5px] border-outline-variant shrink-0">
+              <div className="flex items-center gap-sm">
+                <span className="material-symbols-outlined text-[20px] text-primary">upload_file</span>
+                <h2 className="text-label-md font-inter font-semibold text-on-surface">Import Excel Orders</h2>
               </div>
               {state !== 'confirming' && (
                 <button
                   onClick={closeModal}
-                  className="text-slate-500 hover:text-slate-300 transition-colors p-1 rounded"
+                  className="text-outline hover:text-on-surface transition-colors p-1 rounded"
                   aria-label="Close modal"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <span className="material-symbols-outlined text-[20px]">close</span>
                 </button>
               )}
             </div>
@@ -215,13 +207,10 @@ export default function ImportOrdersModal() {
               {/* ── UPLOADING STATE ─────────────────────────────────────── */}
               {(state === 'uploading') && (
                 <div className="space-y-6">
-                  <div className="border-2 border-dashed border-slate-700 rounded-xl p-8 text-center">
-                    <svg className="w-12 h-12 text-slate-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p className="text-slate-300 font-medium mb-1">Select your ORDER_LIST .xlsx file</p>
-                    <p className="text-slate-500 text-sm mb-4">Only .xlsx files · Max 10 MB</p>
+                  <div className="border-2 border-dashed border-outline-variant rounded-xl p-8 text-center">
+                    <span className="material-symbols-outlined text-[48px] text-outline-variant mb-sm">description</span>
+                    <p className="text-body-md font-noto text-on-surface font-medium mb-xs">Select your ORDER_LIST .xlsx file</p>
+                    <p className="text-label-sm font-inter text-secondary mb-md">Only .xlsx files · Max 10 MB</p>
                     <input
                       id="file-import-input"
                       ref={fileInputRef}
@@ -232,42 +221,38 @@ export default function ImportOrdersModal() {
                     />
                     <label
                       htmlFor="file-import-input"
-                      className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-sm font-medium px-4 py-2 rounded-lg cursor-pointer transition-colors"
+                      className="inline-flex items-center gap-sm border-[0.5px] border-outline-variant bg-surface-container hover:bg-surface-container-high text-on-surface-variant text-label-md font-inter font-medium px-md py-sm rounded-lg cursor-pointer transition-colors"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                      </svg>
+                      <span className="material-symbols-outlined text-[18px]">attach_file</span>
                       Browse file
                     </label>
                     {selectedFile && (
-                      <p className="mt-3 text-sm text-emerald-400 flex items-center justify-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+                      <p className="mt-sm text-label-sm font-inter text-[#15803d] flex items-center justify-center gap-xs">
+                        <span className="material-symbols-outlined text-[16px]">check_circle</span>
                         {selectedFile.name}
-                        <span className="text-slate-500">({(selectedFile.size / 1024).toFixed(0)} KB)</span>
+                        <span className="text-secondary">({(selectedFile.size / 1024).toFixed(0)} KB)</span>
                       </p>
                     )}
                   </div>
 
                   {error && (
-                    <div role="alert" className="flex items-start gap-3 border border-red-500/40 bg-red-500/10 rounded-xl px-4 py-3">
-                      <span className="text-red-400 shrink-0">✕</span>
-                      <p className="text-red-300 text-sm">{error}</p>
+                    <div role="alert" className="flex items-start gap-sm border border-error/40 bg-error-container rounded-lg px-md py-sm">
+                      <span className="material-symbols-outlined text-[18px] text-error shrink-0">error</span>
+                      <p className="text-label-sm font-inter text-error">{error}</p>
                     </div>
                   )}
 
-                  <div className="flex justify-end gap-3">
-                    <button onClick={closeModal} className="px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                  <div className="flex justify-end gap-sm">
+                    <button onClick={closeModal} className="px-md py-sm text-label-md font-inter font-medium text-on-surface-variant hover:text-on-surface transition-colors">
                       Cancel
                     </button>
                     <button
                       id="btn-parse-file"
                       onClick={handleUpload}
                       disabled={!selectedFile}
-                      className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+                      className="inline-flex items-center gap-sm bg-primary-container text-on-primary text-label-md font-inter font-medium px-lg py-sm rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
                     >
-                      Parse File →
+                      Parse file →
                     </button>
                   </div>
                 </div>
@@ -277,51 +262,49 @@ export default function ImportOrdersModal() {
               {state === 'preview' && preview && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-slate-400">
+                    <p className="text-label-sm font-inter text-secondary">
                       Showing first{' '}
-                      <span className="text-white font-semibold">{preview.rows.length}</span>
+                      <span className="text-on-surface font-semibold">{preview.rows.length}</span>
                       {' '}of{' '}
-                      <span className="text-white font-semibold">{preview.totalParsed}</span>
+                      <span className="text-on-surface font-semibold">{preview.totalParsed}</span>
                       {' '}parsed rows. Review before confirming import.
                     </p>
                     {preview.totalParsed > preview.rows.length && (
-                      <span className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded px-2 py-0.5">
+                      <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
                         Full file will be imported on confirm
                       </span>
                     )}
                   </div>
 
-                  <div className="overflow-x-auto rounded-xl border border-slate-800">
+                  <div className="overflow-x-auto rounded-lg border-[0.5px] border-outline-variant">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="bg-slate-900 border-b border-slate-800">
+                        <tr className="bg-surface-container border-b-[0.5px] border-outline-variant">
                           {['#', 'PI Number', 'Sub-line', 'Customer', 'Date', 'Width (m)', 'Length (m)', 'GSM', 'Color', 'FR', 'UV%'].map((h) => (
-                            <th key={h} className="px-3 py-2 text-left text-slate-400 font-semibold uppercase tracking-wide whitespace-nowrap">
+                            <th key={h} className="px-sm py-xs text-left text-label-sm font-inter font-medium text-secondary uppercase tracking-wide whitespace-nowrap">
                               {h}
                             </th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/70">
+                      <tbody className="divide-y divide-[0.5px] divide-outline-variant">
                         {preview.rows.map((row, idx) => (
-                          <tr key={idx} className={idx % 2 === 0 ? 'bg-slate-950' : 'bg-slate-900/30'}>
-                            <td className="px-3 py-2 text-slate-600 tabular-nums">{idx + 1}</td>
-                            <td className="px-3 py-2 font-mono text-slate-200 whitespace-nowrap">{row.piNumber}</td>
-                            <td className="px-3 py-2 text-slate-400 text-center">{row.subLineIndex}</td>
-                            <td className="px-3 py-2 text-slate-300 whitespace-nowrap max-w-[140px] truncate">{row.customer}</td>
-                            <td className="px-3 py-2 text-slate-400 whitespace-nowrap tabular-nums">{formatDate(row.orderDate)}</td>
-                            <td className="px-3 py-2 text-slate-300 tabular-nums text-right">{row.widthM}</td>
-                            <td className="px-3 py-2 text-slate-300 tabular-nums text-right">{row.lengthM.toLocaleString()}</td>
-                            <td className="px-3 py-2 text-slate-300 tabular-nums text-right">{row.gsm}</td>
-                            <td className="px-3 py-2 text-slate-300 whitespace-nowrap">{row.color}</td>
-                            <td className="px-3 py-2 text-center">
-                              {row.frFlag ? (
-                                <span className="text-amber-400 font-bold">FR</span>
-                              ) : (
-                                <span className="text-slate-700">—</span>
-                              )}
+                          <tr key={idx} className={idx % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface-container-low/40'}>
+                            <td className="px-sm py-xs text-outline tabular-nums">{idx + 1}</td>
+                            <td className="px-sm py-xs font-mono text-type-mono text-on-surface whitespace-nowrap">{row.piNumber}</td>
+                            <td className="px-sm py-xs text-secondary text-center">{row.subLineIndex}</td>
+                            <td className="px-sm py-xs text-body-md font-noto text-on-surface whitespace-nowrap max-w-[140px] truncate">{row.customer}</td>
+                            <td className="px-sm py-xs font-mono text-type-mono text-on-surface-variant whitespace-nowrap tabular-nums">{formatDate(row.orderDate)}</td>
+                            <td className="px-sm py-xs text-right font-mono text-type-mono text-on-surface tabular-nums">{row.widthM}</td>
+                            <td className="px-sm py-xs text-right font-mono text-type-mono text-on-surface tabular-nums">{row.lengthM.toLocaleString()}</td>
+                            <td className="px-sm py-xs text-right font-mono text-type-mono text-on-surface tabular-nums">{row.gsm}</td>
+                            <td className="px-sm py-xs text-body-md font-noto text-on-surface whitespace-nowrap">{row.color}</td>
+                            <td className="px-sm py-xs text-center">
+                              {row.frFlag
+                                ? <span className="text-[#92400E] font-inter font-semibold text-label-sm">FR</span>
+                                : <span className="text-outline">—</span>}
                             </td>
-                            <td className="px-3 py-2 text-slate-400 tabular-nums">
+                            <td className="px-sm py-xs font-mono text-type-mono text-on-surface-variant tabular-nums">
                               {row.uvPct != null ? `${(row.uvPct * 100).toFixed(1)}%` : '—'}
                             </td>
                           </tr>
@@ -331,9 +314,9 @@ export default function ImportOrdersModal() {
                   </div>
 
                   {error && (
-                    <div role="alert" className="flex items-start gap-3 border border-red-500/40 bg-red-500/10 rounded-xl px-4 py-3">
-                      <span className="text-red-400 shrink-0">✕</span>
-                      <p className="text-red-300 text-sm">{error}</p>
+                    <div role="alert" className="flex items-start gap-sm border border-error/40 bg-error-container rounded-lg px-md py-sm">
+                      <span className="material-symbols-outlined text-[18px] text-error shrink-0 font-normal">error</span>
+                      <p className="text-label-sm font-inter text-error">{error}</p>
                     </div>
                   )}
                 </div>
@@ -341,30 +324,28 @@ export default function ImportOrdersModal() {
 
               {/* ── CONFIRMING STATE ─────────────────────────────────────── */}
               {state === 'confirming' && (
-                <div className="flex flex-col items-center justify-center py-16 gap-4">
-                  <svg className="w-10 h-10 animate-spin text-blue-400" fill="none" viewBox="0 0 24 24">
+                <div className="flex flex-col items-center justify-center py-16 gap-md">
+                  <svg className="w-10 h-10 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                   </svg>
-                  <p className="text-slate-300 font-medium">Importing orders…</p>
-                  <p className="text-slate-500 text-sm">Please wait, do not close this window.</p>
+                  <p className="text-body-md font-noto text-on-surface font-medium">Importing orders…</p>
+                  <p className="text-label-sm font-inter text-secondary">Please wait, do not close this window.</p>
                 </div>
               )}
 
               {/* ── SUCCESS STATE ────────────────────────────────────────── */}
               {state === 'success' && result && (
-                <div className="flex flex-col items-center justify-center py-16 gap-5">
-                  <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                <div className="flex flex-col items-center justify-center py-16 gap-lg">
+                  <div className="w-16 h-16 rounded-full bg-[#f0fdf4] border border-[#22c55e]/30 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[32px] text-[#15803d]">check_circle</span>
                   </div>
                   <div className="text-center">
-                    <p className="text-white font-bold text-xl">Import complete!</p>
-                    <p className="text-slate-400 text-sm mt-2">
-                      <span className="text-emerald-400 font-semibold">{result.imported} rows imported</span>
+                    <p className="text-headline-md font-inter font-semibold text-on-surface">Import complete!</p>
+                    <p className="text-body-md font-noto text-secondary mt-xs">
+                      <span className="text-[#15803d] font-semibold">{result.imported} rows imported</span>
                       {result.skipped > 0 && (
-                        <span className="ml-2 text-slate-500">· {result.skipped} duplicates skipped</span>
+                        <span className="ml-sm text-outline">· {result.skipped} duplicates skipped</span>
                       )}
                     </p>
                   </div>
@@ -373,15 +354,13 @@ export default function ImportOrdersModal() {
 
               {/* ── ERROR STATE ──────────────────────────────────────────── */}
               {state === 'error' && (
-                <div className="flex flex-col items-center justify-center py-16 gap-5">
-                  <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                    </svg>
+                <div className="flex flex-col items-center justify-center py-16 gap-lg">
+                  <div className="w-16 h-16 rounded-full bg-error-container border border-error/30 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[32px] text-error">error</span>
                   </div>
                   <div className="text-center">
-                    <p className="text-white font-semibold">Import failed</p>
-                    <p className="text-red-400 text-sm mt-1">{error}</p>
+                    <p className="text-on-surface font-semibold font-inter text-headline-md">Import failed</p>
+                    <p className="text-error text-label-md font-inter mt-xs">{error}</p>
                   </div>
                 </div>
               )}
@@ -390,23 +369,21 @@ export default function ImportOrdersModal() {
 
             {/* Footer buttons */}
             {(state === 'preview' || state === 'success' || state === 'error') && (
-              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-800 shrink-0">
+              <div className="flex items-center justify-end gap-sm px-lg py-md border-t-[0.5px] border-outline-variant shrink-0">
                 {state === 'preview' && (
                   <>
                     <button
                       onClick={handleRetry}
-                      className="px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                      className="px-md py-sm text-label-md font-inter font-medium text-on-surface-variant hover:text-on-surface transition-colors"
                     >
                       ← Choose different file
                     </button>
                     <button
                       id="btn-confirm-import"
                       onClick={handleConfirm}
-                      className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+                      className="inline-flex items-center gap-sm bg-primary text-on-primary text-label-md font-inter font-medium px-lg py-sm rounded-lg hover:opacity-90 transition-opacity"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
+                      <span className="material-symbols-outlined text-[18px]">check</span>
                       Confirm Import
                     </button>
                   </>
@@ -415,19 +392,19 @@ export default function ImportOrdersModal() {
                   <button
                     id="btn-import-done"
                     onClick={closeModal}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-6 py-2 rounded-lg transition-colors"
+                    className="bg-primary text-on-primary text-label-md font-inter font-medium px-lg py-sm rounded-lg hover:opacity-90 transition-opacity"
                   >
                     Done
                   </button>
                 )}
                 {state === 'error' && (
                   <>
-                    <button onClick={closeModal} className="px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                    <button onClick={closeModal} className="px-md py-sm text-label-md font-inter font-medium text-on-surface-variant hover:text-on-surface transition-colors">
                       Close
                     </button>
                     <button
                       onClick={handleRetry}
-                      className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+                      className="bg-primary-container text-on-primary text-label-md font-inter font-medium px-lg py-sm rounded-lg hover:opacity-90 transition-opacity"
                     >
                       Try again
                     </button>

@@ -1,6 +1,5 @@
 // src/app/orders/page.tsx
-// Server Component — fetches all production orders from DB and renders the list.
-// No "use client" — this runs only on the server.
+// Server Component — fetches orders, computes KPI counts, renders list page.
 
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -14,11 +13,29 @@ export const metadata: Metadata = {
   description: 'View and manage all SNY production orders.',
 }
 
-// Opt out of caching so the page always reflects the latest DB state.
 export const dynamic = 'force-dynamic'
 
+// ── KPI card component ────────────────────────────────────────────────────────
+
+function KpiCard({ label, value, icon }: { label: string; value: number; icon: string }) {
+  return (
+    <div className="bg-surface-container-lowest border-[0.5px] border-outline-variant rounded-xl p-lg flex flex-col gap-sm">
+      <div className="flex items-center justify-between">
+        <span className="text-label-sm font-inter font-medium text-secondary uppercase tracking-widest">
+          {label}
+        </span>
+        <span className="material-symbols-outlined text-[20px] text-outline">{icon}</span>
+      </div>
+      <p className="text-headline-lg font-inter font-semibold text-on-surface tabular-nums">
+        {value.toLocaleString()}
+      </p>
+    </div>
+  )
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default async function OrdersPage() {
-  // ── Fetch from DB ──────────────────────────────────────────────────────────
   let orders: SerializedProductionOrder[] = []
   let fetchError: string | null = null
 
@@ -27,91 +44,87 @@ export default async function OrdersPage() {
       orderBy: { orderDate: 'desc' },
     })
 
-    // Serialise Date objects → ISO strings before passing to the Client Component.
-    // Next.js 14 requires props to Client Components to be plain, JSON-serializable
-    // values. Passing a Date object directly causes a runtime warning.
     orders = raw.map((o) => ({
       ...o,
       orderDate: o.orderDate.toISOString(),
       createdAt: o.createdAt.toISOString(),
       updatedAt: o.updatedAt.toISOString(),
-      // Prisma.Decimal is not JSON-serializable — convert to string (or null)
       uvPct: o.uvPct != null ? o.uvPct.toString() : null,
     }))
   } catch (err) {
     console.error('[OrdersPage] DB fetch failed:', err)
-    fetchError =
-      err instanceof Error ? err.message : 'Unknown database error'
+    fetchError = err instanceof Error ? err.message : 'Unknown database error'
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── KPI computations (derived from existing fetch — no extra DB query) ──────
+  const now = new Date()
+  const totalOrders = orders.length
+  const thisMonth = orders.filter((o) => {
+    const d = new Date(o.orderDate)
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  }).length
+  const totalCustomers = new Set(orders.map((o) => o.customer)).size
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-[1440px] mx-auto px-container-margin py-xl">
+
       {/* Page header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-start justify-between mb-lg">
         <div>
-          <h1 className="text-2xl font-bold text-white">Production Orders</h1>
-          <p className="text-slate-400 mt-1 text-sm">
-            Manage all SNY production orders
+          <h1 className="text-display font-inter font-semibold text-primary tracking-tight">
+            Production orders
+          </h1>
+          <p className="text-body-md font-noto text-secondary mt-xs">
+            Manage and track all manufacturing orders
           </p>
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-2">
-          {/* Import Excel */}
+        <div className="flex items-center gap-md mt-1">
           <ImportOrdersModal />
-
-          {/* New Order */}
           <Link
             id="btn-new-order"
             href="/orders/new"
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-sm bg-primary-container text-on-primary rounded-lg px-md py-sm text-label-md font-inter font-medium hover:opacity-90 transition-opacity"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            New Order
+            <span className="material-symbols-outlined text-[18px]">add</span>
+            New order
           </Link>
         </div>
       </div>
+
+      {/* KPI cards */}
+      {!fetchError && (
+        <div className="grid grid-cols-3 gap-md mb-lg">
+          <KpiCard label="Total orders"  value={totalOrders}   icon="receipt_long" />
+          <KpiCard label="This month"    value={thisMonth}     icon="calendar_month" />
+          <KpiCard label="Customers"     value={totalCustomers} icon="groups" />
+        </div>
+      )}
 
       {/* DB error banner */}
       {fetchError && (
         <div
           role="alert"
-          className="flex items-start gap-3 border border-red-500/40 bg-red-500/10 rounded-xl px-5 py-4 mb-8"
+          className="flex items-start gap-3 border border-error/40 bg-error-container rounded-xl px-5 py-4 mb-lg"
         >
-          <span className="text-red-400 text-xl mt-0.5" aria-hidden="true">
-            ✕
-          </span>
+          <span className="material-symbols-outlined text-[20px] text-error shrink-0 mt-0.5">error</span>
           <div>
-            <p className="text-red-300 font-semibold text-sm">
+            <p className="text-label-md font-inter font-semibold text-error">
               Could not load orders
             </p>
-            <p className="text-red-400/70 text-xs mt-0.5 font-mono">
+            <p className="text-label-sm font-inter text-on-error-container mt-0.5 font-mono">
               {fetchError}
             </p>
-            <p className="text-slate-500 text-xs mt-2">
+            <p className="text-label-sm font-inter text-secondary mt-2">
               Make sure DATABASE_URL is set in .env.local and{' '}
-              <code className="text-slate-400">npx prisma db push</code> has
-              been run.
+              <code className="text-on-surface-variant">npx prisma db push</code> has been run.
             </p>
           </div>
         </div>
       )}
 
-      {/* Orders table — only rendered when fetch succeeded */}
+      {/* Orders table */}
       {!fetchError && <OrderTable orders={orders} />}
     </div>
   )
