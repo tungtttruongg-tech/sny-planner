@@ -182,10 +182,10 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
             </div>
 
             <div className="mt-xl flex justify-end gap-sm">
-              <button type="button" onClick={() => setIsEditing(false)} className="px-md py-sm rounded-lg font-medium text-on-surface-variant hover:bg-surface-container transition-colors">
+              <button type="button" onClick={() => setIsEditing(false)} className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors">
                 Cancel
               </button>
-              <button type="submit" disabled={isLoading} className="px-md py-sm rounded-lg font-medium bg-primary text-on-primary hover:bg-primary/90 disabled:opacity-50 transition-colors">
+              <button type="submit" disabled={isLoading} className="inline-flex items-center justify-center gap-sm bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 disabled:opacity-60 transition-colors">
                 {isLoading ? 'Saving...' : 'Save'}
               </button>
             </div>
@@ -220,7 +220,7 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
               <button 
                 onClick={handleEditClick}
                 disabled={isLoading}
-                className="flex-1 flex items-center justify-center gap-2 px-md py-sm rounded-lg font-medium border border-primary text-primary hover:bg-primary/5 disabled:opacity-50 transition-colors"
+                className="flex-1 inline-flex items-center justify-center gap-2 border border-primary text-primary bg-transparent hover:bg-surface-container text-sm font-medium px-4 py-2 h-9 rounded-md disabled:opacity-50 transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">edit</span>
                 Edit
@@ -228,7 +228,7 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
               <button 
                 onClick={handleUnassign}
                 disabled={isLoading}
-                className="flex-1 flex items-center justify-center gap-2 px-md py-sm rounded-lg font-medium border border-error/50 text-error hover:bg-error/10 disabled:opacity-50 transition-colors"
+                className="flex-1 inline-flex items-center justify-center gap-2 border border-[#ba1a1a] text-[#ba1a1a] bg-transparent hover:bg-[#ba1a1a]/10 text-sm font-medium px-4 py-2 h-9 rounded-md disabled:opacity-50 transition-colors"
               >
                 <span className="material-symbols-outlined text-[18px]">delete</span>
                 Remove

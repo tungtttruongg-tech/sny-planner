@@ -141,10 +141,10 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
           </div>
 
           <div className="mt-xl flex justify-end gap-sm">
-            <button type="button" onClick={onClose} className="px-md py-sm rounded-lg font-medium text-on-surface-variant hover:bg-surface-container transition-colors">
+            <button type="button" onClick={onClose} className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors">
               Cancel
             </button>
-            <button type="submit" disabled={isLoading} className="px-md py-sm rounded-lg font-medium bg-primary text-on-primary hover:bg-primary/90 disabled:opacity-50 transition-colors">
+            <button type="submit" disabled={isLoading} className="inline-flex items-center justify-center gap-sm bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 disabled:opacity-60 transition-colors">
               {isLoading ? 'Saving...' : 'Assign'}
             </button>
           </div>

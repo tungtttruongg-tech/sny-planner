@@ -363,7 +363,7 @@ export default function NewOrderForm() {
         <button
           type="button"
           onClick={() => router.push('/orders')}
-          className="px-md py-sm text-label-md font-inter font-medium text-on-surface-variant hover:text-on-surface transition-colors"
+          className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
         >
           Cancel
         </button>
@@ -372,7 +372,7 @@ export default function NewOrderForm() {
           id="btn-save-order"
           type="submit"
           disabled={submitStatus === 'saving' || submitStatus === 'success'}
-          className="inline-flex items-center gap-sm bg-primary text-on-primary text-label-md font-inter font-medium px-lg py-sm rounded-lg hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
+          className="inline-flex items-center justify-center gap-sm bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
         >
           {submitStatus === 'saving' ? (
             <>

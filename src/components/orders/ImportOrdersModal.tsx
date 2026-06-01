@@ -159,7 +159,7 @@ export default function ImportOrdersModal() {
       <button
         id="btn-import-excel"
         onClick={openModal}
-        className="inline-flex items-center gap-sm border-[0.5px] border-outline-variant bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface text-label-md font-inter font-medium px-md py-sm rounded-lg transition-colors"
+        className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
       >
         <span className="material-symbols-outlined text-[18px]">upload_file</span>
         Import Excel
@@ -243,14 +243,14 @@ export default function ImportOrdersModal() {
                   )}
 
                   <div className="flex justify-end gap-sm">
-                    <button onClick={closeModal} className="px-md py-sm text-label-md font-inter font-medium text-on-surface-variant hover:text-on-surface transition-colors">
+                    <button onClick={closeModal} className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors">
                       Cancel
                     </button>
                     <button
                       id="btn-parse-file"
                       onClick={handleUpload}
                       disabled={!selectedFile}
-                      className="inline-flex items-center gap-sm bg-primary-container text-on-primary text-label-md font-inter font-medium px-lg py-sm rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                      className="inline-flex items-center justify-center gap-sm bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Parse file →
                     </button>
@@ -374,14 +374,14 @@ export default function ImportOrdersModal() {
                   <>
                     <button
                       onClick={handleRetry}
-                      className="px-md py-sm text-label-md font-inter font-medium text-on-surface-variant hover:text-on-surface transition-colors"
+                      className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
                     >
                       ← Choose different file
                     </button>
                     <button
                       id="btn-confirm-import"
                       onClick={handleConfirm}
-                      className="inline-flex items-center gap-sm bg-primary text-on-primary text-label-md font-inter font-medium px-lg py-sm rounded-lg hover:opacity-90 transition-opacity"
+                      className="inline-flex items-center justify-center gap-sm bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 transition-colors"
                     >
                       <span className="material-symbols-outlined text-[18px]">check</span>
                       Confirm Import
@@ -392,19 +392,19 @@ export default function ImportOrdersModal() {
                   <button
                     id="btn-import-done"
                     onClick={closeModal}
-                    className="bg-primary text-on-primary text-label-md font-inter font-medium px-lg py-sm rounded-lg hover:opacity-90 transition-opacity"
+                    className="inline-flex items-center justify-center gap-sm bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 transition-colors"
                   >
                     Done
                   </button>
                 )}
                 {state === 'error' && (
                   <>
-                    <button onClick={closeModal} className="px-md py-sm text-label-md font-inter font-medium text-on-surface-variant hover:text-on-surface transition-colors">
+                    <button onClick={closeModal} className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors">
                       Close
                     </button>
                     <button
                       onClick={handleRetry}
-                      className="bg-primary-container text-on-primary text-label-md font-inter font-medium px-lg py-sm rounded-lg hover:opacity-90 transition-opacity"
+                      className="inline-flex items-center justify-center gap-sm bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 transition-colors"
                     >
                       Try again
                     </button>

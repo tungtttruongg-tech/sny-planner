@@ -144,14 +144,14 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           <button
             id="btn-delete-order"
             onClick={() => { setShowDeleteDialog(true); setDeleteError(null); setDeleteStatus('idle') }}
-            className="inline-flex items-center gap-xs text-label-md font-inter font-medium px-md py-sm rounded-lg border-[0.5px] border-error text-error hover:bg-error-container transition-colors"
+            className="inline-flex items-center justify-center gap-sm border border-[#ba1a1a] text-[#ba1a1a] hover:bg-[#ba1a1a]/10 bg-transparent text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">delete</span>Delete
           </button>
           <button
             id="btn-edit-order"
             onClick={enterEdit}
-            className="inline-flex items-center gap-xs text-label-md font-inter font-medium px-md py-sm rounded-lg border-[0.5px] border-outline-variant text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
+            className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">edit</span>Edit
           </button>
@@ -245,7 +245,7 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
                   id="btn-cancel-delete"
                   onClick={() => setShowDeleteDialog(false)}
                   disabled={deleteStatus === 'deleting'}
-                  className="px-md py-sm text-label-md font-inter font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -253,7 +253,7 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
                   id="btn-confirm-delete"
                   onClick={handleDelete}
                   disabled={deleteStatus === 'deleting'}
-                  className="inline-flex items-center gap-xs bg-error text-on-error text-label-md font-inter font-medium px-md py-sm rounded-lg hover:opacity-90 disabled:opacity-60 transition-opacity"
+                  className="inline-flex items-center justify-center gap-sm border border-[#ba1a1a] text-[#ba1a1a] hover:bg-[#ba1a1a]/10 bg-transparent text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors disabled:opacity-60"
                 >
                   {deleteStatus === 'deleting' ? (
                     <>
@@ -354,11 +354,11 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
       {/* Action buttons */}
       <div className="flex items-center justify-end gap-md pt-md border-t-[0.5px] border-outline-variant">
         <button type="button" onClick={cancelEdit} disabled={isSubmitting}
-          className="px-md py-sm text-label-md font-inter font-medium text-on-surface-variant hover:text-on-surface disabled:opacity-50 transition-colors">
+          className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors disabled:opacity-50">
           Cancel
         </button>
         <button id="btn-save-changes" type="submit" disabled={isSubmitting}
-          className="inline-flex items-center gap-sm bg-primary text-on-primary text-label-md font-inter font-medium px-lg py-sm rounded-lg hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity">
+          className="inline-flex items-center justify-center gap-sm bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
           {isSubmitting ? (
             <>
               <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">

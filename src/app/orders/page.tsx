@@ -85,7 +85,7 @@ export default async function OrdersPage() {
           <Link
             id="btn-bulk-paste"
             href="/orders/bulk"
-            className="inline-flex items-center gap-sm border-[0.5px] border-outline-variant bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface text-label-md font-inter font-medium px-md py-sm rounded-lg transition-colors"
+            className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">content_paste</span>
             Bulk paste
@@ -93,7 +93,7 @@ export default async function OrdersPage() {
           <Link
             id="btn-new-order"
             href="/orders/new"
-            className="inline-flex items-center gap-sm bg-primary-container text-on-primary rounded-lg px-md py-sm text-label-md font-inter font-medium hover:opacity-90 transition-opacity"
+            className="inline-flex items-center justify-center gap-sm bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
             New order
