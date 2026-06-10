@@ -354,6 +354,58 @@ export default function NewOrderForm() {
                 />
               </Field>
             </div>
+
+            {/* ── Thông số kỹ thuật ─────────────────────────────────── */}
+            <div className="sm:col-span-2">
+              <p className="text-label-sm font-inter font-semibold text-primary uppercase tracking-widest mb-md">
+                Thông số kỹ thuật
+              </p>
+            </div>
+
+            {/* Thể loại lưới */}
+            <div className="sm:col-span-2">
+              <Field label="Thể loại lưới" error={errors.meshType?.message}>
+                <input
+                  id="field-meshType"
+                  type="text"
+                  placeholder="e.g. Dệt kim, Dệt thị…"
+                  className={inputCls(false, !!errors.meshType)}
+                  {...register('meshType', {
+                    setValueAs: (v: string) => (v === '' ? null : v),
+                  })}
+                />
+              </Field>
+            </div>
+
+            {/* Số kim */}
+            <Field label="Số kim" error={errors.needleCount?.message}>
+              <input
+                id="field-needleCount"
+                type="number"
+                min={1}
+                step={1}
+                placeholder="e.g. 28"
+                className={inputCls(true, !!errors.needleCount)}
+                {...register('needleCount', {
+                  setValueAs: (v: string) => (v === '' || v === null ? null : Number(v)),
+                })}
+              />
+            </Field>
+
+            {/* Số dàn */}
+            <Field label="Số dàn" error={errors.beamCount?.message}>
+              <input
+                id="field-beamCount"
+                type="number"
+                min={1}
+                step={1}
+                placeholder="e.g. 4"
+                className={inputCls(true, !!errors.beamCount)}
+                {...register('beamCount', {
+                  setValueAs: (v: string) => (v === '' || v === null ? null : Number(v)),
+                })}
+              />
+            </Field>
           </div>
         )}
       </section>

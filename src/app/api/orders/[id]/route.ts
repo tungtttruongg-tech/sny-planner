@@ -93,6 +93,10 @@ export async function PATCH(
   if (data.frFlag !== undefined)       updateData.frFlag = data.frFlag
   if ('description' in data) updateData.description = data.description
   if ('remark' in data)      updateData.remark = data.remark
+  // Technical specs
+  if ('meshType' in data)    updateData.meshType    = data.meshType
+  if ('needleCount' in data) updateData.needleCount = data.needleCount
+  if ('beamCount' in data)   updateData.beamCount   = data.beamCount
 
   // 4. Update in DB
   try {

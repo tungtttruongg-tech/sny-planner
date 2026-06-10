@@ -102,6 +102,9 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
       uvPct: currentOrder.uvPct != null ? parseFloat(currentOrder.uvPct) : null,
       frFlag: currentOrder.frFlag,
       description: currentOrder.description ?? '', remark: currentOrder.remark ?? '',
+      meshType: currentOrder.meshType ?? '',
+      needleCount: currentOrder.needleCount ?? undefined,
+      beamCount: currentOrder.beamCount ?? undefined,
     })
     setMode('edit')
   }
@@ -171,7 +174,8 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
 
         {/* Optional fields */}
         {(currentOrder.qty != null || currentOrder.uvPct != null || currentOrder.frFlag ||
-          currentOrder.description || currentOrder.remark) && (
+          currentOrder.description || currentOrder.remark ||
+          currentOrder.meshType || currentOrder.needleCount != null || currentOrder.beamCount != null) && (
           <div className="border-t-[0.5px] border-outline-variant pt-lg">
             <p className="text-label-sm font-inter font-medium text-secondary uppercase tracking-widest mb-md">
               Optional details
@@ -193,6 +197,22 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
                 <div className="sm:col-span-2"><ViewField label="Remark" value={currentOrder.remark} /></div>
               )}
             </dl>
+
+            {/* Thông số kỹ thuật */}
+            {(currentOrder.meshType || currentOrder.needleCount != null || currentOrder.beamCount != null) && (
+              <>
+                <p className="text-label-sm font-inter font-semibold text-primary uppercase tracking-widest mt-lg mb-md">
+                  Thông số kỹ thuật
+                </p>
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-y-lg gap-x-xl">
+                  {currentOrder.meshType && (
+                    <div className="sm:col-span-2"><ViewField label="Thể loại lưới" value={currentOrder.meshType} /></div>
+                  )}
+                  {currentOrder.needleCount != null && <ViewField label="Số kim" value={currentOrder.needleCount} mono />}
+                  {currentOrder.beamCount  != null && <ViewField label="Số dàn"  value={currentOrder.beamCount}  mono />}
+                </dl>
+              </>
+            )}
           </div>
         )}
 
@@ -348,6 +368,46 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
               <textarea id="edit-remark" rows={2} className={`${inputCls(false, !!errors.remark)} resize-none`} {...register('remark')} />
             </FormField>
           </div>
+
+          {/* ── Thông số kỹ thuật ─────────────────────────────────── */}
+          <div className="sm:col-span-2">
+            <p className="text-label-sm font-inter font-semibold text-primary uppercase tracking-widest mb-md">
+              Thông số kỹ thuật
+            </p>
+          </div>
+          <div className="sm:col-span-2">
+            <FormField label="Thể loại lưới" error={errors.meshType?.message}>
+              <input
+                id="edit-meshType"
+                type="text"
+                placeholder="e.g. Dệt kim, Dệt thị…"
+                className={inputCls(false, !!errors.meshType)}
+                {...register('meshType', { setValueAs: (v: string) => (v === '' ? null : v) })}
+              />
+            </FormField>
+          </div>
+          <FormField label="Số kim" error={errors.needleCount?.message}>
+            <input
+              id="edit-needleCount"
+              type="number"
+              min={1}
+              step={1}
+              placeholder="e.g. 28"
+              className={inputCls(true, !!errors.needleCount)}
+              {...register('needleCount', { setValueAs: (v: string) => (v === '' || v === null) ? null : Number(v) })}
+            />
+          </FormField>
+          <FormField label="Số dàn" error={errors.beamCount?.message}>
+            <input
+              id="edit-beamCount"
+              type="number"
+              min={1}
+              step={1}
+              placeholder="e.g. 4"
+              className={inputCls(true, !!errors.beamCount)}
+              {...register('beamCount', { setValueAs: (v: string) => (v === '' || v === null) ? null : Number(v) })}
+            />
+          </FormField>
         </div>
       </section>
 

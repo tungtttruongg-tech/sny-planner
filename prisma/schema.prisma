@@ -37,6 +37,11 @@ model ProductionOrder {
   description  String?               // free-text order description
   remark       String?               // free-text internal remark
 
+  // Technical specs (added M3)
+  meshType     String?               // Thể loại lưới
+  needleCount  Int?                  // Số kim
+  beamCount    Int?                  // Số dàn
+
   // Workflow status
   status       String   @default("PENDING") // PENDING | IN_PRODUCTION | DONE | CANCELLED
 

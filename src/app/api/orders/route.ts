@@ -50,6 +50,10 @@ export async function POST(req: NextRequest) {
         frFlag: data.frFlag ?? false,
         ...(data.description && { description: data.description }),
         ...(data.remark && { remark: data.remark }),
+        // Technical specs
+        ...(data.meshType   != null && { meshType:    data.meshType }),
+        ...(data.needleCount != null && { needleCount: data.needleCount }),
+        ...(data.beamCount  != null && { beamCount:   data.beamCount }),
       },
     })
 

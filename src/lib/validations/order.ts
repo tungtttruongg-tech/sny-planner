@@ -81,6 +81,28 @@ export const createOrderSchema = z.object({
     .transform((v) => v.trim())
     .nullable()
     .optional(),
+
+  // Technical specs
+  meshType: z
+    .string()
+    .max(100, 'Thể loại lưới must be 100 characters or fewer')
+    .transform((v) => v.trim())
+    .nullable()
+    .optional(),
+
+  needleCount: z
+    .number()
+    .int('Số kim must be a whole number')
+    .positive('Số kim must be positive')
+    .nullable()
+    .optional(),
+
+  beamCount: z
+    .number()
+    .int('Số dàn must be a whole number')
+    .positive('Số dàn must be positive')
+    .nullable()
+    .optional(),
 })
 
 /** TypeScript type inferred from the Zod schema input (before transforms). */
@@ -171,6 +193,28 @@ export const updateOrderSchema = z.object({
     .string()
     .max(200, 'Remark must be 200 characters or fewer')
     .transform((v) => v.trim())
+    .nullable()
+    .optional(),
+
+  // Technical specs
+  meshType: z
+    .string()
+    .max(100, 'Thể loại lưới must be 100 characters or fewer')
+    .transform((v) => v.trim())
+    .nullable()
+    .optional(),
+
+  needleCount: z
+    .number()
+    .int('Số kim must be a whole number')
+    .positive('Số kim must be positive')
+    .nullable()
+    .optional(),
+
+  beamCount: z
+    .number()
+    .int('Số dàn must be a whole number')
+    .positive('Số dàn must be positive')
     .nullable()
     .optional(),
 })
