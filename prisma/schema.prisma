@@ -59,6 +59,19 @@ model ProductionOrder {
   @@map("production_orders")
 }
 
+model Material {
+  id           String   @id @default(cuid())
+  name         String   // e.g. "MF", "UV 4%", "Tái chế", "FR", "IR"
+  currentStock Decimal  @db.Decimal(10, 2)  // kg hiện có
+  minThreshold Decimal  @db.Decimal(10, 2)  // ngưỡng tối thiểu cảnh báo
+  unit         String   @default("kg")
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("materials")
+}
+
 model MachineAssignment {
   id        String   @id @default(cuid())
   machineId String   // e.g. "M-001" to "M-040"

@@ -1,138 +1,235 @@
+'use client'
+
 // src/app/materials/page.tsx
-// M3 — Materials mock page (R1 light theme). Pure Server Component — logic unchanged.
+// M3 Materials — functional inventory tracking page.
+// Replaces the MOCK page. Planner manually manages stock levels and thresholds.
 
+import { useState, useEffect, useCallback } from 'react'
 import type { Metadata } from 'next'
+import AddMaterialModal from '@/components/materials/AddMaterialModal'
+import EditMaterialModal, { type SerializedMaterial } from '@/components/materials/EditMaterialModal'
+import MaterialsTable from '@/components/materials/MaterialsTable'
 
-export const metadata: Metadata = {
-  title: 'Materials — SNY Planner',
-  description: 'Materials tracking view — mock data only in Phase 1.',
-}
-
-// ── Mock data (unchanged) ─────────────────────────────────────────────────────
-
-type StockStatus = 'OK' | 'LOW' | 'CRITICAL'
-
-interface MockMaterial {
-  code: string; type: string; stockKg: number; status: StockStatus
-}
-
-const MOCK_MATERIALS: MockMaterial[] = [
-  { code: 'MF-PP-01',   type: 'Nhựa MF',        stockKg: 8500, status: 'OK'       },
-  { code: 'MB-IM-B045', type: 'Master Batch',    stockKg: 120,  status: 'LOW'      },
-  { code: 'MB-PF960N',  type: 'Master Batch',    stockKg: 200,  status: 'OK'       },
-  { code: 'FR-001',     type: 'Fire Retardant',  stockKg: 200,  status: 'LOW'      },
-  { code: 'UV-PP-01',   type: 'Nhựa UV',         stockKg: 45,   status: 'CRITICAL' },
-]
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const STATUS_CONFIG: Record<StockStatus, { label: string; cls: string }> = {
-  OK:       { label: 'OK',       cls: 'bg-[#f0fdf4] text-[#15803d] border border-[#22c55e]/30' },
-  LOW:      { label: 'LOW',      cls: 'bg-[#FFF8E7] text-[#92400E] border border-[#F59E0B]/40' },
-  CRITICAL: { label: 'CRITICAL', cls: 'bg-error-container text-error border border-error/30'    },
-}
-
-function StatusBadge({ status }: { status: StockStatus }) {
-  const { label, cls } = STATUS_CONFIG[status]
-  return (
-    <span className={`inline-flex items-center px-sm py-xs rounded text-label-sm font-inter font-semibold tracking-wide ${cls}`}>
-      {label}
-    </span>
-  )
-}
+// Note: metadata export is not supported in 'use client' components.
+// Page title is set via the <title> in the HTML head from layout.tsx.
 
 // ── Summary card ──────────────────────────────────────────────────────────────
 
-interface SummaryCardProps { label: string; value: number; accent: string; border: string }
+interface SummaryCardProps {
+  label: string
+  value: string | number
+  icon: string
+  accent: string
+  border: string
+}
 
-function SummaryCard({ label, value, accent, border }: SummaryCardProps) {
+function SummaryCard({ label, value, icon, accent, border }: SummaryCardProps) {
   return (
-    <div className={`bg-surface-container-lowest border-[0.5px] ${border} rounded-xl px-lg py-md`}>
-      <p className="text-label-sm font-inter font-medium text-secondary uppercase tracking-widest mb-sm">{label}</p>
-      <p className={`text-headline-lg font-inter font-semibold tabular-nums ${accent}`}>{value}</p>
+    <div className={`bg-surface-container-lowest border-[0.5px] ${border} rounded-xl px-6 py-4`}>
+      <div className="flex items-center gap-3 mb-2">
+        <span className={`material-symbols-outlined text-[22px] ${accent}`}>{icon}</span>
+        <p className="text-xs font-inter font-medium text-secondary uppercase tracking-widest">{label}</p>
+      </div>
+      <p className={`text-3xl font-inter font-semibold tabular-nums ${accent}`}>{value}</p>
     </div>
   )
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Delete confirmation dialog ─────────────────────────────────────────────────
+
+interface DeleteDialogProps {
+  material: SerializedMaterial
+  onConfirm: () => void
+  onCancel: () => void
+  isDeleting: boolean
+}
+
+function DeleteDialog({ material, onConfirm, onCancel, isDeleting }: DeleteDialogProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-surface-container-lowest border-[0.5px] border-outline-variant rounded-xl p-6 max-w-sm w-full shadow-2xl">
+        <div className="flex items-start gap-3 mb-4">
+          <span className="material-symbols-outlined text-[24px] text-error shrink-0 mt-0.5">warning</span>
+          <div>
+            <p className="text-sm font-inter font-semibold text-on-surface">Xóa nguyên liệu?</p>
+            <p className="text-xs text-secondary mt-1">
+              Xóa <strong>{material.name}</strong>. Hành động này không thể hoàn tác.
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            disabled={isDeleting}
+            className="inline-flex items-center justify-center border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="inline-flex items-center justify-center border border-[#ba1a1a] text-[#ba1a1a] hover:bg-[#ba1a1a]/10 bg-transparent text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors disabled:opacity-60"
+          >
+            {isDeleting ? 'Đang xóa…' : 'Xóa'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function MaterialsPage() {
-  const total    = MOCK_MATERIALS.length
-  const lowCount = MOCK_MATERIALS.filter((m) => m.status === 'LOW').length
-  const critCount = MOCK_MATERIALS.filter((m) => m.status === 'CRITICAL').length
+  const [materials, setMaterials]     = useState<SerializedMaterial[]>([])
+  const [isLoading, setIsLoading]     = useState(true)
+  const [fetchError, setFetchError]   = useState<string | null>(null)
+  const [showAddModal, setShowAddModal]   = useState(false)
+  const [editTarget, setEditTarget]       = useState<SerializedMaterial | null>(null)
+  const [deleteTarget, setDeleteTarget]   = useState<SerializedMaterial | null>(null)
+  const [isDeleting, setIsDeleting]       = useState(false)
+
+  // ── Fetch all materials ────────────────────────────────────────────────────
+
+  const fetchMaterials = useCallback(async () => {
+    setIsLoading(true)
+    setFetchError(null)
+    try {
+      const res = await fetch('/api/materials')
+      const data = await res.json() as { success: boolean; materials?: SerializedMaterial[]; error?: string }
+      if (!res.ok || !data.success) { setFetchError(data.error ?? 'Không thể tải dữ liệu.'); return }
+      setMaterials(data.materials ?? [])
+    } catch {
+      setFetchError('Lỗi mạng — không thể kết nối máy chủ.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchMaterials() }, [fetchMaterials])
+
+  // ── Delete handler ─────────────────────────────────────────────────────────
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/materials/${deleteTarget.id}`, { method: 'DELETE' })
+      const data = await res.json() as { success: boolean; error?: string }
+      if (!res.ok || !data.success) { setFetchError(data.error ?? 'Không thể xóa nguyên liệu.'); return }
+      setDeleteTarget(null)
+      await fetchMaterials()
+    } catch {
+      setFetchError('Lỗi mạng — không thể kết nối máy chủ.')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  // ── Derived summary stats ──────────────────────────────────────────────────
+
+  const lowStockCount = materials.filter(
+    (m) => parseFloat(m.currentStock) < parseFloat(m.minThreshold)
+  ).length
+
+  const totalKg = materials.reduce((sum, m) => sum + parseFloat(m.currentStock), 0)
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-[1440px] mx-auto px-container-margin py-xl">
+    <div className="max-w-[1440px] mx-auto px-8 py-8">
 
       {/* Page header */}
-      <div className="mb-lg">
-        <h1 className="text-display font-inter font-semibold text-primary tracking-tight">Materials</h1>
-        <p className="text-body-md font-noto text-secondary mt-xs">Yarn and material tracking</p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-inter font-semibold text-primary tracking-tight">Materials</h1>
+          <p className="text-sm font-noto text-secondary mt-1">Quản lý tồn kho nguyên liệu</p>
+        </div>
+        <button
+          id="btn-add-material"
+          onClick={() => setShowAddModal(true)}
+          className="inline-flex items-center justify-center gap-2 bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 transition-colors"
+        >
+          <span className="material-symbols-outlined text-[18px]">add</span>
+          Add material
+        </button>
       </div>
 
-      {/* MOCK banner — amber light theme */}
-      <div
-        role="alert"
-        className="flex items-start gap-sm border border-[#F59E0B] bg-[#FFF8E7] rounded-lg px-md py-sm mb-lg"
-      >
-        <span className="material-symbols-outlined text-[20px] text-[#92400E] shrink-0 mt-0.5">warning</span>
-        <div>
-          <p className="text-label-md font-inter font-semibold text-[#92400E]">
-            MOCK — NO CALCULATION LOGIC YET
-          </p>
-          <p className="text-label-sm font-inter text-[#92400E]/80 mt-0.5">
-            Materials calculation will be implemented in a future sprint. No real data is shown here.
-          </p>
+      {/* Error banner */}
+      {fetchError && (
+        <div className="flex items-start gap-2 border border-error/40 bg-error-container rounded-lg px-4 py-3 mb-4">
+          <span className="material-symbols-outlined text-[20px] text-error shrink-0">error</span>
+          <p className="text-sm font-inter text-error">{fetchError}</p>
         </div>
-      </div>
+      )}
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-md mb-lg">
-        <SummaryCard label="Total Materials" value={total}    accent="text-on-surface"    border="border-outline-variant" />
-        <SummaryCard label="Low Stock Items" value={lowCount} accent="text-[#92400E]"     border="border-[#F59E0B]/40"   />
-        <SummaryCard label="Critical Items"  value={critCount} accent="text-error"         border="border-error/30"       />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <SummaryCard
+          label="Total Materials"
+          value={materials.length}
+          icon="inventory_2"
+          accent="text-on-surface"
+          border="border-outline-variant"
+        />
+        <SummaryCard
+          label="Low Stock Alerts"
+          value={lowStockCount}
+          icon="warning"
+          accent={lowStockCount > 0 ? 'text-error' : 'text-[#15803d]'}
+          border={lowStockCount > 0 ? 'border-error/30' : 'border-[#22c55e]/30'}
+        />
+        <SummaryCard
+          label="Total Stock"
+          value={`${totalKg.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 1 })} kg`}
+          icon="scale"
+          accent="text-primary"
+          border="border-primary/20"
+        />
       </div>
 
-      {/* Materials table */}
-      <div className="bg-surface-container-lowest border-[0.5px] border-outline-variant rounded-lg overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-surface-container border-b-[0.5px] border-outline-variant">
-              {['Material Code', 'Type', 'Current Stock (kg)', 'Status'].map((h, i) => (
-                <th
-                  key={h}
-                  className={`px-md py-sm text-label-sm font-inter font-medium text-secondary uppercase tracking-widest ${
-                    i === 2 ? 'text-right' : 'text-left'
-                  }`}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[0.5px] divide-outline-variant">
-            {MOCK_MATERIALS.map((mat, idx) => (
-              <tr
-                key={mat.code}
-                className={idx % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface-container-low/40'}
-              >
-                <td className="px-md py-sm font-mono text-type-mono text-on-surface whitespace-nowrap">{mat.code}</td>
-                <td className="px-md py-sm text-body-md font-noto text-on-surface whitespace-nowrap">{mat.type}</td>
-                <td className="px-md py-sm text-right font-mono text-type-mono text-on-surface tabular-nums">
-                  {mat.stockKg.toLocaleString()}
-                </td>
-                <td className="px-md py-sm"><StatusBadge status={mat.status} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="border-t-[0.5px] border-outline-variant px-md py-sm bg-surface-container">
-          <p className="text-label-sm font-inter text-secondary">
-            Mock data — {MOCK_MATERIALS.length} materials. Real inventory connected in Phase 2.
-          </p>
+      {/* Table or loading */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16">
+          <svg className="w-6 h-6 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+          </svg>
         </div>
-      </div>
+      ) : (
+        <MaterialsTable
+          materials={materials}
+          onEdit={setEditTarget}
+          onDelete={setDeleteTarget}
+        />
+      )}
+
+      {/* Add modal */}
+      {showAddModal && (
+        <AddMaterialModal
+          onAdded={() => { fetchMaterials(); setShowAddModal(false) }}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
+
+      {/* Edit modal */}
+      {editTarget && (
+        <EditMaterialModal
+          material={editTarget}
+          onUpdated={() => { fetchMaterials(); setEditTarget(null) }}
+          onClose={() => setEditTarget(null)}
+        />
+      )}
+
+      {/* Delete confirmation */}
+      {deleteTarget && (
+        <DeleteDialog
+          material={deleteTarget}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteTarget(null)}
+          isDeleting={isDeleting}
+        />
+      )}
     </div>
   )
 }
