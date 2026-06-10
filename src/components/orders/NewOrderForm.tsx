@@ -60,9 +60,7 @@ const inputCls = (isNumeric: boolean, hasError: boolean) =>
 
 export default function NewOrderForm() {
   const router = useRouter()
-  const [submitStatus, setSubmitStatus] = useState<
-    'idle' | 'saving' | 'success' | 'error'
-  >('idle')
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'saving' | 'error'>('idle')
   const [apiError, setApiError] = useState<string | null>(null)
   const [showOptional, setShowOptional] = useState(false)
 
@@ -70,7 +68,6 @@ export default function NewOrderForm() {
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors },
   } = useForm<CreateOrderInput, unknown, CreateOrderOutput>({
     resolver: zodResolver(createOrderSchema),
@@ -99,19 +96,8 @@ export default function NewOrderForm() {
         return
       }
 
-      // ── Success path ──
-      setSubmitStatus('success')
-
-      // Auto-clear form after 2 s
-      setTimeout(() => {
-        reset()
-        setShowOptional(false)
-      }, 2000)
-
-      // Hide success banner after 3 s
-      setTimeout(() => {
-        setSubmitStatus('idle')
-      }, 3000)
+      // ── Success path: redirect to the newly created order ──
+      router.push(`/orders/${json.order.id}`)
     } catch {
       setApiError('Network error — could not reach the server. Please try again.')
       setSubmitStatus('error')
@@ -122,18 +108,6 @@ export default function NewOrderForm() {
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-lg">
 
       {/* ── Global banners ─────────────────────────────────────────────────── */}
-      {submitStatus === 'success' && (
-        <div
-          role="status"
-          className="flex items-center gap-sm border border-[#22c55e]/40 bg-[#f0fdf4] rounded-lg px-md py-sm"
-        >
-          <span className="material-symbols-outlined text-[20px] text-[#15803d]">check_circle</span>
-          <p className="text-label-md font-inter font-medium text-[#15803d]">
-            Order saved — form will clear in 2 seconds
-          </p>
-        </div>
-      )}
-
       {submitStatus === 'error' && apiError && (
         <div
           role="alert"
@@ -423,7 +397,7 @@ export default function NewOrderForm() {
         <button
           id="btn-save-order"
           type="submit"
-          disabled={submitStatus === 'saving' || submitStatus === 'success'}
+          disabled={submitStatus === 'saving'}
           className="inline-flex items-center justify-center gap-sm bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
         >
           {submitStatus === 'saving' ? (
@@ -433,11 +407,6 @@ export default function NewOrderForm() {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
               Saving…
-            </>
-          ) : submitStatus === 'success' ? (
-            <>
-              <span className="material-symbols-outlined text-[18px]">check</span>
-              Saved
             </>
           ) : (
             <>

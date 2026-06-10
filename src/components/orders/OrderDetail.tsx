@@ -14,6 +14,7 @@ import {
   type UpdateOrderOutput,
 } from '@/lib/validations/order'
 import type { SerializedProductionOrder } from '@/types'
+import AssignFromOrderModal from '@/components/schedule/AssignFromOrderModal'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -86,6 +87,7 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
   const [deleteStatus, setDeleteStatus] = useState<'idle' | 'deleting' | 'error'>('idle')
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [showAssignModal, setShowAssignModal] = useState(false)
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
     useForm<UpdateOrderInput, unknown, UpdateOrderOutput>({
@@ -157,6 +159,14 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
             className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">edit</span>Edit
+          </button>
+          <button
+            id="btn-assign-machine"
+            onClick={() => setShowAssignModal(true)}
+            className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">precision_manufacturing</span>
+            Assign to machine
           </button>
         </div>
 
@@ -288,6 +298,15 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Assign to machine modal */}
+        {showAssignModal && (
+          <AssignFromOrderModal
+            order={currentOrder}
+            onAssigned={() => {}}
+            onClose={() => setShowAssignModal(false)}
+          />
         )}
       </div>
     )
