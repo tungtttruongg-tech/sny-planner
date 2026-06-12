@@ -2,16 +2,7 @@
 > Ground truth for all AI coding agents (Antigravity, Cursor).
 > READ THIS ENTIRE FILE before generating any code.
 > If context in this file conflicts with your judgment → this file wins.
-> Last updated: 30/5/2026
-
----
-
-## 0. TL;DR for agent
-Build a web app to replace Excel for a PP mesh factory (SNY).
-Currently in **M2 — Machine Schedule Functional** sprint.
-Phase 1 complete (S0–S5). UI redesigned (R1 Korean minimal light theme).
-Bulk paste import built and working.
-When in doubt → STOP and ask. Do not guess.
+> Last updated: 10/06/2026
 
 ---
 
@@ -32,8 +23,8 @@ Replace 4 disconnected Excel files with 1 system.
 Flow: Sales Order → Production Order → Machine Schedule → Material Planning.
 
 **Phase 1 (DONE):** Endusers enter data into tool. Stop using Excel.
-**Current focus:** M2 Machine Schedule — assign orders to machines manually.
-**Phase 2 (later):** AI automation, auto-scheduling, formula calculations.
+**Current focus:** NONE — Phase 1 complete. Next = Auth (NextAuth.js v5) + Work Order formulas.
+**Phase 2 (later):** AI automation, auto-scheduling, formula calculations, alerts.
 
 ---
 
@@ -59,8 +50,7 @@ Flow: Sales Order → Production Order → Machine Schedule → Material Plannin
 - `src/app/api/orders/[id]/route.ts` — GET/PATCH/DELETE
 
 ### S4 ✅ Mock pages
-- `src/app/schedule/page.tsx` — will be replaced by M2 functional
-- `src/app/materials/page.tsx` — MOCK (Phase 2)
+- Replaced by real pages in M2/M3
 
 ### S5 ✅ Excel import
 - `src/app/api/orders/import/route.ts` — parse preview
@@ -80,6 +70,22 @@ Flow: Sales Order → Production Order → Machine Schedule → Material Plannin
 - `src/app/api/orders/bulk/route.ts` — POST handler
 - `src/lib/excel/parsePastedText.ts` — tab-separated parser
 
+### M2 ✅ Machine Schedule functional
+- Grid 40×days, assign/edit/remove, overlap check UTC+7.
+- `AssignFromOrderModal`: assign from order detail page.
+
+### M3 ✅ Materials functional
+- CRUD inventory, low stock alerts, summary cards.
+
+### UX Polish ✅
+- Redirect to detail after order creation.
+- No top nav tabs.
+- Side nav: Production, Schedule, Materials active; Reports, Settings disabled with Phase 2 pill.
+
+### Navigation (current state)
+- **Top nav:** logo + Phase 1 badge + bell + avatar only (NO tabs)
+- **Side nav:** Production(`/orders`), Schedule(`/schedule`), Materials(`/materials`), Reports(disabled), Settings(disabled)
+
 ### Packages installed (do NOT reinstall)
 - next@14.2.35, react, react-dom, typescript, tailwindcss
 - prisma@5.22.0, @prisma/client@5.22.0
@@ -97,38 +103,86 @@ Flow: Sales Order → Production Order → Machine Schedule → Material Plannin
 
 ```prisma
 model ProductionOrder {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
+
+  // PI = Proforma Invoice — the primary order identifier at SNY
   piNumber     String
-  subLineIndex Int       @default(1)
+  // Sub-line index within a PI (0-based). A PI can have multiple fabric specs.
+  subLineIndex Int      @default(0)
+
+  // Order info
   customer     String
   orderDate    DateTime
-  widthM       Decimal
-  lengthM      Decimal
-  gsm          Int
-  color        String
-  qty          Int?
-  uvPct        Decimal?  @db.Decimal(5,2)
-  frFlag       Boolean   @default(false)
-  description  String?
-  remark       String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  @@unique([piNumber, subLineIndex])
-}
-```
 
-**Next schema addition for M2:**
-```prisma
+  // Fabric specs
+  widthM       Float    // roll width in metres (e.g. 4.0)
+  lengthM      Float    // order length in metres
+  gsm          Int      // grams per square metre (e.g. 165)
+  color        String   // e.g. "BLACK", "WHITE"
+
+  // Optional order details (added S2)
+  qty          Int?                  // quantity in rolls
+  uvPct        Decimal?  @db.Decimal(5, 2) // UV treatment percentage 0-100
+  frFlag       Boolean   @default(false)   // flame-retardant treatment
+  description  String?               // free-text order description
+  remark       String?               // free-text internal remark
+
+  // Technical specs (added M3)
+  meshType     String?               // Thể loại lưới
+  needleCount  Int?                  // Số kim
+  beamCount    Int?                  // Số dàn
+
+  // Workflow status
+  status       String   @default("PENDING") // PENDING | IN_PRODUCTION | DONE | CANCELLED
+
+  // dataSource tracking for AI training data quality:
+  // "manual" = KH nhập tay thật → dùng cho AI training
+  // "import" = Excel/bulk paste → dùng cho AI training
+  // "seed" = demo data do TESO tạo → KHÔNG dùng cho AI training
+  dataSource   String   @default("manual")
+
+  // Relations
+  assignment   MachineAssignment?
+
+  // Timestamps
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Composite unique constraint: one PI can have many sub-lines but each (PI, subLine) is unique
+  @@unique([piNumber, subLineIndex])
+  @@index([piNumber])
+  @@index([orderDate])
+  @@map("production_orders")
+}
+
+model Material {
+  id           String   @id @default(cuid())
+  name         String   // e.g. "MF", "UV 4%", "Tái chế", "FR", "IR"
+  currentStock Decimal  @db.Decimal(10, 2)  // kg hiện có
+  minThreshold Decimal  @db.Decimal(10, 2)  // ngưỡng tối thiểu cảnh báo
+  unit         String   @default("kg")
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("materials")
+}
+
 model MachineAssignment {
-  id          String   @id @default(cuid())
-  machineId   String   // "M-001" to "M-040"
-  orderId     String
-  startDate   DateTime
-  endDate     DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  order       ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  machineId String   // e.g. "M-001" to "M-040"
+  
+  orderId   String   @unique
+  order     ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  startDate DateTime
+  endDate   DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([machineId, startDate])
+  @@map("machine_assignments")
 }
 ```
 
@@ -141,7 +195,6 @@ model MachineAssignment {
 - **Form:** react-hook-form + zod v4
 - **Deploy:** Vercel (auto-deploy from GitHub main)
 - **Fonts:** Inter + Noto Sans KR + Material Symbols Outlined (via Google Fonts link in layout.tsx)
-- **NO auth in Phase 1**
 
 ---
 
@@ -171,30 +224,7 @@ error: "#ba1a1a"
 
 ---
 
-## 7. Current sprint — M2 Machine Schedule Functional
-
-### Business rules (confirmed)
-- 40 machines: M-001 to M-040 (fixed, no DB table)
-- Each slot = 1 machine × 1 day
-- Each slot: max 1 order
-- Assignment: orderId + machineId + startDate + endDate
-- 1 order → 1 machine at a time
-- Planner assigns manually — no auto-scheduling
-
-### What to build
-1. Add `MachineAssignment` model to schema → `npx prisma db push`
-2. API: GET/POST `/api/assignments` + DELETE `/api/assignments/[id]`
-3. Schedule page: 40×days grid, click cell → assign/view modal
-4. Remove MOCK banner — this is now real
-5. AssignModal: select order + end date → save
-6. DetailModal: view assignment → remove
-
-### Prompt file
-`ANTIGRAVITY_PROMPT_M2.md` already written and ready to paste into Antigravity.
-
----
-
-## 8. Project folder structure
+## 7. Project folder structure
 
 ```
 sny-planner/
@@ -205,15 +235,17 @@ sny-planner/
 ├── src/
 │   ├── app/
 │   │   ├── orders/          ← list, new, [id], bulk
-│   │   ├── schedule/        ← M2 (currently mock, building functional)
-│   │   ├── materials/       ← MOCK
+│   │   ├── schedule/        ← M2 functional
+│   │   ├── materials/       ← M3 functional
 │   │   └── api/
-│   │       ├── orders/      ← DO NOT MODIFY existing routes
-│   │       └── assignments/ ← NEW for M2
+│   │       ├── orders/      
+│   │       ├── materials/   
+│   │       └── assignments/ 
 │   ├── components/
 │   │   ├── layout/          ← TopNav.tsx, SideNav.tsx
 │   │   ├── orders/          ← OrderTable, NewOrderForm, OrderDetail, ImportOrdersModal
-│   │   └── schedule/        ← NEW: AssignModal.tsx, DetailModal.tsx
+│   │   ├── materials/       ← MaterialsTable, AddMaterialModal, EditMaterialModal
+│   │   └── schedule/        ← AssignModal.tsx, DetailModal.tsx, AssignFromOrderModal.tsx
 │   └── lib/
 │       ├── db.ts
 │       ├── validations/order.ts
@@ -222,7 +254,7 @@ sny-planner/
 
 ---
 
-## 9. Sprint history
+## 8. Sprint history
 
 | Sprint | Status |
 |---|---|
@@ -230,21 +262,28 @@ sny-planner/
 | S1 Order list | ✅ Done |
 | S2 New order form | ✅ Done |
 | S3 Order detail | ✅ Done |
-| S4 M2/M3 mock | ✅ Done |
+| S4 Mock pages | ✅ Done |
 | S5 Excel import | ✅ Done |
 | R1 UI redesign | ✅ Done |
 | Bulk paste import | ✅ Done |
-| **M2 Machine Schedule** | ⏳ CURRENT |
-| M3 Materials functional | ⏳ Phase 2 |
-| AI automation | ⏳ Phase 2 |
+| M2 Machine Schedule | ✅ Done |
+| M3 Materials functional | ✅ Done |
+| UX Polish | ✅ Done |
+
+## 9. Next sprints
+
+| Sprint | Task | Status |
+|---|---|---|
+| Auth | NextAuth.js v5 — 3 roles: Admin/Planner/Viewer | ⏳ Next |
+| Work Order | Implement 4 formulas + verification cases A/B/C/D | ⏳ Next |
+| Phase 2 AI | AI-1 gợi ý lịch, AI-2 cảnh báo NVL, AI-3 chat tiếng Việt | ⏳ Phase 2 |
 
 ---
 
 ## 10. OUT OF SCOPE — refuse even if asked
-- ❌ Auth / login / roles (Phase 2)
-- ❌ Auto-calculate formulas (Phase 2)
+- ❌ Auth / login / roles (Next sprint)
+- ❌ Work Order formula calculations (Next sprint)
 - ❌ AI scheduling suggestions (Phase 2)
-- ❌ M3 real inventory logic (Phase 2)
 - ❌ Bulk delete / bulk edit
 - ❌ Real-time / websockets
 - ❌ Mobile responsive (desktop-first)
