@@ -122,8 +122,14 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
   if (!isOpen || !assignment) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-surface rounded-xl shadow-lg w-full max-w-sm overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-surface rounded-xl shadow-lg w-full max-w-sm overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="px-md py-sm border-b-[0.5px] border-outline-variant flex justify-between items-center">
           <h3 className="text-headline-sm font-inter font-semibold text-on-surface">
             {isEditing ? 'Edit Assignment' : 'Assignment Details'}

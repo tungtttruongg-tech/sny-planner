@@ -2,54 +2,21 @@
 
 // src/components/layout/TopNav.tsx
 // Fixed 64px top navigation bar.
-// "use client" required for usePathname active link detection.
+// Navigation tabs removed — side nav is the single navigation source.
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-
-const NAV_LINKS = [
-  { href: '/orders',    label: 'Orders'    },
-  { href: '/schedule',  label: 'Schedule'  },
-  { href: '/materials', label: 'Materials' },
-]
 
 export default function TopNav() {
-  const pathname = usePathname()
-
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-[64px] bg-surface border-b border-[0.5px] border-outline-variant">
       <div className="max-w-[1440px] mx-auto px-container-margin h-full flex items-center justify-between">
 
-        {/* Left: brand + nav links */}
-        <div className="flex items-center gap-8">
-          {/* Brand */}
-          <Link href="/orders" className="flex items-center gap-2 shrink-0">
-            <span className="text-headline-md font-inter font-semibold text-primary tracking-tight">
-              SNY<span className="text-on-surface-variant font-medium"> Planner</span>
-            </span>
-          </Link>
-
-          {/* Nav links */}
-          <nav className="flex items-center gap-1">
-            {NAV_LINKS.map(({ href, label }) => {
-              const isActive = pathname === href || pathname.startsWith(href + '/')
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={[
-                    'relative px-3 py-[20px] text-label-md font-inter font-medium transition-colors',
-                    isActive
-                      ? 'text-primary border-b-2 border-primary'
-                      : 'text-on-surface-variant hover:text-on-surface',
-                  ].join(' ')}
-                >
-                  {label}
-                </Link>
-              )
-            })}
-          </nav>
-        </div>
+        {/* Left: brand */}
+        <Link href="/orders" className="flex items-center gap-2 shrink-0">
+          <span className="text-headline-md font-inter font-semibold text-primary tracking-tight">
+            SNY<span className="text-on-surface-variant font-medium"> Planner</span>
+          </span>
+        </Link>
 
         {/* Right: phase badge + icons */}
         <div className="flex items-center gap-3">

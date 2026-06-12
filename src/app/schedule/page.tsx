@@ -175,6 +175,7 @@ export default function SchedulePage() {
                       <td key={day} className={`border-r-[0.5px] border-outline-variant/40 p-0 last:border-r-0 ${weekend ? 'bg-surface-container/60' : ''}`}>
                         <div 
                           onClick={() => handleCellClick(machine, date)}
+                          title={assignment.order.piNumber}
                           className={`h-7 mx-0.5 my-0.5 flex items-center cursor-pointer transition-opacity hover:opacity-80
                             ${isStart ? 'rounded-l-md ml-1' : ''}
                             ${isEnd ? 'rounded-r-md mr-1' : ''}

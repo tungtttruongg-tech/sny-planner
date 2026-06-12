@@ -84,8 +84,14 @@ export default function AssignFromOrderModal({ order, onAssigned, onClose }: Pro
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-surface rounded-xl shadow-lg w-full max-w-md overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-surface rounded-xl shadow-lg w-full max-w-md overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
 
         {/* Header */}
         <div className="px-md py-sm border-b-[0.5px] border-outline-variant flex justify-between items-center">

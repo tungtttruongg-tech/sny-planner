@@ -84,8 +84,14 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-surface rounded-xl shadow-lg w-full max-w-md overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-surface rounded-xl shadow-lg w-full max-w-md overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="px-md py-sm border-b-[0.5px] border-outline-variant flex justify-between items-center">
           <h3 className="text-headline-sm font-inter font-semibold text-on-surface">Assign Order</h3>
           <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">

@@ -71,7 +71,7 @@ export default function MaterialsTable({ materials, onEdit, onDelete }: Props) {
             return (
               <tr
                 key={mat.id}
-                className={idx % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface-container-low/40'}
+                className="hover:bg-[#f0eded] cursor-pointer transition-colors duration-150"
               >
                 {/* Tên nguyên liệu */}
                 <td className="px-4 py-3 font-mono text-sm font-semibold text-on-surface whitespace-nowrap">

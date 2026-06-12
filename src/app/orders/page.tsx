@@ -105,8 +105,8 @@ export default async function OrdersPage() {
       {!fetchError && (
         <div className="grid grid-cols-3 gap-md mb-lg">
           <KpiCard label="Total orders"  value={totalOrders}   icon="receipt_long" />
-          <KpiCard label="This month"    value={thisMonth}     icon="calendar_month" />
-          <KpiCard label="Customers"     value={totalCustomers} icon="groups" />
+          <KpiCard label="đơn mới tháng này"    value={thisMonth}     icon="calendar_month" />
+          <KpiCard label="khách hàng"     value={totalCustomers} icon="groups" />
         </div>
       )}
 

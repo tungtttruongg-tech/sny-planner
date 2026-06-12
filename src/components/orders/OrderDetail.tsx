@@ -234,7 +234,6 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
                 {currentOrder.status}
               </span>
             } />
-            <ViewField label="Order ID"     value={currentOrder.id}                               mono />
             <ViewField label="Created"      value={formatDateTime(currentOrder.createdAt)}        />
             <ViewField label="Last Updated" value={formatDateTime(currentOrder.updatedAt)}        />
           </dl>
