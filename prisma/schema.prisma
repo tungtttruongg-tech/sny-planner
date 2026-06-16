@@ -46,8 +46,8 @@ model ProductionOrder {
   // Workflow status
   status       String   @default("PENDING") // PENDING | IN_PRODUCTION | DONE | CANCELLED
 
-  // Relations
-  assignment   MachineAssignment?
+  // Relations — một đơn hàng có thể chạy trên nhiều máy song song
+  assignments  MachineAssignment[]
 
   // Timestamps
   createdAt    DateTime @default(now())
@@ -77,8 +77,11 @@ model MachineAssignment {
   id        String   @id @default(cuid())
   machineId String   // e.g. "M-001" to "M-040"
   
-  orderId   String   @unique
+  orderId   String
   order     ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Số mét phân công cho máy này (optional, dùng khi chia đơn)
+  allocatedMeters Decimal? @db.Decimal(10, 2)
   
   startDate DateTime
   endDate   DateTime

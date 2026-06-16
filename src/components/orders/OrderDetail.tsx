@@ -4,7 +4,7 @@
 // R1 light theme — all state/form/API logic unchanged from S3.
 // Only classNames updated: light surface, primary/error buttons, outline-variant dividers.
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -89,6 +89,22 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [showAssignModal, setShowAssignModal] = useState(false)
 
+  // Danh sách máy đang chạy đơn hàng này
+  type MachineRow = { id: string; machineId: string; startDate: string; endDate: string; allocatedMeters: string | null }
+  const [machineRows, setMachineRows] = useState<MachineRow[]>([])
+
+  const fetchMachineRows = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/assignments?orderId=${currentOrder.id}`)
+      if (res.ok) {
+        const data = await res.json()
+        setMachineRows(data)
+      }
+    } catch { /* silent */ }
+  }, [currentOrder.id])
+
+  useEffect(() => { fetchMachineRows() }, [fetchMachineRows])
+
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
     useForm<UpdateOrderInput, unknown, UpdateOrderOutput>({
       resolver: zodResolver(updateOrderSchema),
@@ -170,6 +186,31 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
             Assign to machine
           </button>
         </div>
+
+        {/* Máy đang chạy */}
+        {machineRows.length > 0 && (
+          <div className="border border-outline-variant rounded-xl p-md bg-surface-container-low">
+            <p className="text-label-sm font-inter font-semibold text-secondary uppercase tracking-widest mb-sm">
+              Máy đang chạy
+            </p>
+            <ul className="space-y-xs">
+              {machineRows.map(row => (
+                <li key={row.id} className="flex items-center gap-sm text-body-md font-mono text-on-surface">
+                  <span className="material-symbols-outlined text-[16px] text-secondary">precision_manufacturing</span>
+                  <span className="font-semibold">{row.machineId}</span>
+                  {row.allocatedMeters && (
+                    <span className="text-secondary">— {Number(row.allocatedMeters).toLocaleString()}m</span>
+                  )}
+                  <span className="text-outline ml-auto text-label-sm">
+                    {new Date(row.startDate).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit' })}
+                    {' → '}
+                    {new Date(row.endDate).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit' })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Core fields */}
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-y-lg gap-x-xl">
@@ -305,7 +346,7 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
         {showAssignModal && (
           <AssignFromOrderModal
             order={currentOrder}
-            onAssigned={() => {}}
+            onAssigned={fetchMachineRows}
             onClose={() => setShowAssignModal(false)}
           />
         )}

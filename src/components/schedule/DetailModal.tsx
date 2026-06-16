@@ -9,6 +9,7 @@ export type AssignmentDetail = {
   machineId: string
   startDate: string
   endDate: string
+  allocatedMeters: string | null  // Decimal serialised as string by Prisma
   order: {
     id: string
     piNumber: string
@@ -253,6 +254,14 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
                   <div className="col-span-2">
                     <dt className="text-label-sm font-inter text-secondary">Mã màu (MB Code)</dt>
                     <dd className="text-body-md font-mono text-on-surface">{assignment.order.mbCode}</dd>
+                  </div>
+                )}
+                {assignment.allocatedMeters && (
+                  <div className="col-span-2">
+                    <dt className="text-label-sm font-inter text-secondary">Số mét phân công</dt>
+                    <dd className="text-body-md font-mono text-on-surface">
+                      {Number(assignment.allocatedMeters).toLocaleString()} m
+                    </dd>
                   </div>
                 )}
               </dl>

@@ -7,10 +7,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const year = searchParams.get("year");
     const month = searchParams.get("month"); // 0-indexed month
+    // Lọc theo đơn hàng cụ thể (dùng ở OrderDetail để hiển thị máy đang chạy)
+    const orderId = searchParams.get("orderId");
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let whereClause: any = {};
 
-    if (year && month) {
+    if (orderId) {
+      whereClause = { orderId };
+    } else if (year && month) {
       const y = parseInt(year, 10);
       const m = parseInt(month, 10);
 
@@ -50,6 +55,7 @@ export async function GET(request: Request) {
           },
         },
       },
+      orderBy: { startDate: 'asc' },
     });
 
     return NextResponse.json(assignments);
@@ -71,7 +77,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { machineId, orderId, startDate, endDate } = result.data;
+    const { machineId, orderId, startDate, endDate, allocatedMeters } = result.data;
     const start = new Date(startDate);
     const end = new Date(endDate);
 
@@ -82,7 +88,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check overlap
+    // Kiểm tra chồng lịch theo máy (một máy không thể chạy 2 đơn cùng lúc)
     console.log("OVERLAP CHECK TRIGGERED");
     const existing = await prisma.machineAssignment.findFirst({
       where: {
@@ -106,6 +112,7 @@ export async function POST(request: Request) {
         orderId,
         startDate: start,
         endDate: end,
+        ...(allocatedMeters != null && { allocatedMeters }),
       },
       include: {
         order: true,
@@ -113,15 +120,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(assignment, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[POST_ASSIGNMENTS]", error);
-    // If unique constraint fails (e.g., orderId already assigned)
-    if (error?.code === 'P2002') {
-      return NextResponse.json(
-        { message: "Order is already assigned to a machine" },
-        { status: 409 }
-      );
-    }
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }

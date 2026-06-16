@@ -5,6 +5,8 @@ export const createAssignmentSchema = z.object({
   orderId: z.string().min(1, "Order ID is required"),
   startDate: z.string().datetime({ message: "Invalid date format. Must be UTC ISO string." }),
   endDate: z.string().datetime({ message: "Invalid date format. Must be UTC ISO string." }),
+  // Số mét phân công (optional, dùng khi chia đơn trên nhiều máy)
+  allocatedMeters: z.number().positive("Số mét phải lớn hơn 0").optional(),
 });
 
 export const updateAssignmentSchema = z.object({

@@ -18,6 +18,7 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
   const [orders, setOrders] = useState<Order[]>([])
   const [selectedOrderId, setSelectedOrderId] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [allocatedMeters, setAllocatedMeters] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -28,6 +29,7 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
         setEndDate(format(startDate, 'yyyy-MM-dd'))
       }
       setSelectedOrderId('')
+      setAllocatedMeters('')
       setError('')
     }
   }, [isOpen, startDate])
@@ -66,7 +68,9 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
           machineId,
           orderId: selectedOrderId,
           startDate: startISO,
-          endDate: endISO
+          endDate: endISO,
+          // Gửi số mét phân công nếu planner có nhập
+          ...(allocatedMeters !== '' && { allocatedMeters: Number(allocatedMeters) }),
         })
       })
 
@@ -143,6 +147,20 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
                   className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary outline-none" 
                 />
               </div>
+            </div>
+
+            {/* Số mét phân công */}
+            <div>
+              <label className="block text-label-sm font-medium text-secondary mb-xs">Số mét phân công</label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={allocatedMeters}
+                onChange={e => setAllocatedMeters(e.target.value)}
+                placeholder="e.g. 6000"
+                className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary outline-none font-mono"
+              />
             </div>
           </div>
 

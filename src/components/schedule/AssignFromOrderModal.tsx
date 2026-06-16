@@ -28,12 +28,16 @@ interface Props {
 }
 
 export default function AssignFromOrderModal({ order, onAssigned, onClose }: Props) {
-  const [machineId, setMachineId]   = useState('')
-  const [startDate, setStartDate]   = useState('')
-  const [endDate, setEndDate]       = useState('')
-  const [error, setError]           = useState('')
-  const [isLoading, setIsLoading]   = useState(false)
-  const [isSuccess, setIsSuccess]   = useState(false)
+  const [machineId, setMachineId]         = useState('')
+  const [startDate, setStartDate]         = useState('')
+  const [endDate, setEndDate]             = useState('')
+  const [allocatedMeters, setAllocatedMeters] = useState<string>(
+    // Mặc định chia đôi chiều dài đơn hàng
+    String(Math.round(order.lengthM / 2))
+  )
+  const [error, setError]                 = useState('')
+  const [isLoading, setIsLoading]         = useState(false)
+  const [isSuccess, setIsSuccess]         = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -57,6 +61,8 @@ export default function AssignFromOrderModal({ order, onAssigned, onClose }: Pro
           orderId:   order.id,
           startDate: toVietnamISO(startDate),
           endDate:   toVietnamISO(endDate),
+          // Gửi số mét phân công nếu có nhập
+          ...(allocatedMeters !== '' && { allocatedMeters: Number(allocatedMeters) }),
         }),
       })
 
@@ -178,6 +184,23 @@ export default function AssignFromOrderModal({ order, onAssigned, onClose }: Pro
                   className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary outline-none"
                 />
               </div>
+            </div>
+
+            {/* Số mét phân công */}
+            <div>
+              <label className="block text-label-sm font-medium text-secondary mb-xs">
+                Số mét phân công
+              </label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={allocatedMeters}
+                onChange={e => setAllocatedMeters(e.target.value)}
+                placeholder="e.g. 6000"
+                className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary outline-none font-mono"
+              />
+              <p className="text-label-sm text-outline mt-xs">Mặc định chia đôi. Điều chỉnh nếu cần.</p>
             </div>
 
             {/* Actions */}
