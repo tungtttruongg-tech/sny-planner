@@ -54,6 +54,8 @@ export async function POST(req: NextRequest) {
         ...(data.meshType   != null && { meshType:    data.meshType }),
         ...(data.needleCount != null && { needleCount: data.needleCount }),
         ...(data.beamCount  != null && { beamCount:   data.beamCount }),
+        // Mã Masterbatch màu
+        ...(data.mbCode != null && { mbCode: data.mbCode }),
       },
     })
 

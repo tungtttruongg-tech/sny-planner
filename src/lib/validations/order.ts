@@ -103,9 +103,16 @@ export const createOrderSchema = z.object({
     .positive('Số dàn must be positive')
     .nullable()
     .optional(),
+
+  // Mã Masterbatch màu (optional)
+  mbCode: z
+    .string()
+    .max(50, 'MB Code must be 50 characters or fewer')
+    .transform((v) => v.trim())
+    .nullable()
+    .optional(),
 })
 
-/** TypeScript type inferred from the Zod schema input (before transforms). */
 export type CreateOrderInput = z.input<typeof createOrderSchema>
 
 /** TypeScript type after Zod transforms (e.g. trim, toUpperCase applied). */
@@ -217,7 +224,16 @@ export const updateOrderSchema = z.object({
     .positive('Số dàn must be positive')
     .nullable()
     .optional(),
+
+  // Mã Masterbatch màu (optional)
+  mbCode: z
+    .string()
+    .max(50, 'MB Code must be 50 characters or fewer')
+    .transform((v) => v.trim())
+    .nullable()
+    .optional(),
 })
+
 
 /** Input type for PATCH (before transforms). */
 export type UpdateOrderInput = z.input<typeof updateOrderSchema>

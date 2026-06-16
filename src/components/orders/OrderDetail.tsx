@@ -101,6 +101,7 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
       customer: currentOrder.customer, orderDate: toDateInputValue(currentOrder.orderDate),
       widthM: currentOrder.widthM, lengthM: currentOrder.lengthM, gsm: currentOrder.gsm,
       color: currentOrder.color, qty: currentOrder.qty,
+      mbCode: currentOrder.mbCode ?? undefined,
       uvPct: currentOrder.uvPct != null ? parseFloat(currentOrder.uvPct) : null,
       frFlag: currentOrder.frFlag,
       description: currentOrder.description ?? '', remark: currentOrder.remark ?? '',
@@ -180,6 +181,7 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           <ViewField label="Length (m)"   value={Number(currentOrder.lengthM).toLocaleString()} mono />
           <ViewField label="GSM"          value={currentOrder.gsm}                              mono />
           <ViewField label="Color"        value={currentOrder.color}                            />
+          <ViewField label="Mã màu (MB Code)" value={currentOrder.mbCode ?? null}               mono />
         </dl>
 
         {/* Optional fields */}
@@ -354,6 +356,15 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           </FormField>
           <FormField label="Color"       required error={errors.color?.message}>
             <input id="edit-color" type="text" className={inputCls(false, !!errors.color)} {...register('color')} />
+          </FormField>
+          <FormField label="Mã màu (MB Code)" error={errors.mbCode?.message}>
+            <input
+              id="edit-mbCode"
+              type="text"
+              placeholder="e.g. MYD4501A"
+              className={inputCls(false, !!errors.mbCode)}
+              {...register('mbCode', { setValueAs: (v: string) => (v === '' ? null : v) })}
+            />
           </FormField>
         </div>
       </section>

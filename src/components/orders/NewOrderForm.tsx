@@ -230,6 +230,19 @@ export default function NewOrderForm() {
               {...register('color')}
             />
           </Field>
+
+          {/* MB Code */}
+          <Field label="Mã màu (MB Code)" error={errors.mbCode?.message}>
+            <input
+              id="field-mbCode"
+              type="text"
+              placeholder="e.g. MYD4501A"
+              className={inputCls(false, !!errors.mbCode)}
+              {...register('mbCode', {
+                setValueAs: (v: string) => (v === '' ? null : v),
+              })}
+            />
+          </Field>
         </div>
       </section>
 

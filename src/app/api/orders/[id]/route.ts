@@ -97,6 +97,8 @@ export async function PATCH(
   if ('meshType' in data)    updateData.meshType    = data.meshType
   if ('needleCount' in data) updateData.needleCount = data.needleCount
   if ('beamCount' in data)   updateData.beamCount   = data.beamCount
+  // Mã Masterbatch màu
+  if ('mbCode' in data)      updateData.mbCode      = data.mbCode
 
   // 4. Update in DB
   try {

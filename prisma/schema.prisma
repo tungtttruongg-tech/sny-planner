@@ -29,6 +29,7 @@ model ProductionOrder {
   lengthM      Float    // order length in metres
   gsm          Int      // grams per square metre (e.g. 165)
   color        String   // e.g. "BLACK", "WHITE"
+  mbCode       String?  // Mã Masterbatch màu — e.g. "MYD4501A", "7079", "LS309315"
 
   // Optional order details (added S2)
   qty          Int?                  // quantity in rolls

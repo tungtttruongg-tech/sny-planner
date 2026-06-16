@@ -13,6 +13,11 @@ export type AssignmentDetail = {
     id: string
     piNumber: string
     customer: string
+    widthM: number
+    lengthM: number
+    gsm: number
+    color: string
+    mbCode: string | null
   }
 }
 
@@ -220,6 +225,37 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
               <p className="text-body-md text-on-surface">
                 {format(new Date(assignment.startDate), 'dd/MM/yyyy')} — {format(new Date(assignment.endDate), 'dd/MM/yyyy')}
               </p>
+            </div>
+
+            {/* CHI TIẾT ĐƠN HÀNG */}
+            <div className="border-t-[0.5px] border-outline-variant pt-md">
+              <p className="text-label-sm font-inter font-semibold text-secondary uppercase tracking-widest mb-sm">
+                Chi tiết đơn hàng
+              </p>
+              <dl className="grid grid-cols-2 gap-x-md gap-y-sm">
+                <div>
+                  <dt className="text-label-sm font-inter text-secondary">Khổ (Width)</dt>
+                  <dd className="text-body-md font-mono text-on-surface">{assignment.order.widthM} m</dd>
+                </div>
+                <div>
+                  <dt className="text-label-sm font-inter text-secondary">Chiều dài (Length)</dt>
+                  <dd className="text-body-md font-mono text-on-surface">{Number(assignment.order.lengthM).toLocaleString()} m</dd>
+                </div>
+                <div>
+                  <dt className="text-label-sm font-inter text-secondary">GSM</dt>
+                  <dd className="text-body-md font-mono text-on-surface">{assignment.order.gsm}</dd>
+                </div>
+                <div>
+                  <dt className="text-label-sm font-inter text-secondary">Màu (Color)</dt>
+                  <dd className="text-body-md font-noto text-on-surface">{assignment.order.color}</dd>
+                </div>
+                {assignment.order.mbCode && (
+                  <div className="col-span-2">
+                    <dt className="text-label-sm font-inter text-secondary">Mã màu (MB Code)</dt>
+                    <dd className="text-body-md font-mono text-on-surface">{assignment.order.mbCode}</dd>
+                  </div>
+                )}
+              </dl>
             </div>
 
             <div className="pt-sm flex gap-sm">
