@@ -56,6 +56,13 @@ export async function POST(req: NextRequest) {
         ...(data.beamCount  != null && { beamCount:   data.beamCount }),
         // Mã Masterbatch màu
         ...(data.mbCode != null && { mbCode: data.mbCode }),
+        // Kiểu đơn hàng
+        orderType: data.orderType ?? 'meters',
+        ...(data.rollLength  != null && { rollLength:  data.rollLength }),
+        ...(data.pieceLength != null && { pieceLength: data.pieceLength }),
+        // Eyelet
+        hasEyelet: data.hasEyelet ?? false,
+        ...(data.eyeletColor != null && { eyeletColor: data.eyeletColor }),
       },
     })
 

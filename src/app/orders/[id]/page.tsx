@@ -50,6 +50,8 @@ export default async function OrderDetailPage({ params }: Props) {
       createdAt: raw.createdAt.toISOString(),
       updatedAt: raw.updatedAt.toISOString(),
       uvPct: raw.uvPct != null ? raw.uvPct.toString() : null,
+      rollLength:  raw.rollLength  != null ? raw.rollLength.toString()  : null,
+      pieceLength: raw.pieceLength != null ? raw.pieceLength.toString() : null,
     }
   } catch (err) {
     throw err

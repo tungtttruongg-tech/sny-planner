@@ -68,14 +68,35 @@ export default function NewOrderForm() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<CreateOrderInput, unknown, CreateOrderOutput>({
     resolver: zodResolver(createOrderSchema),
     defaultValues: {
       subLineIndex: 1,
       frFlag: false,
+      orderType: 'meters',
+      hasEyelet: false,
     },
   })
+
+  // Kiểu đơn hàng — dùng để hiển thị trường có điều kiện
+  const orderType = watch('orderType')
+  const watchedQty = watch('qty')
+  const watchedRollLength = watch('rollLength')
+  const watchedPieceLength = watch('pieceLength')
+  const watchedHasEyelet = watch('hasEyelet')
+
+  // Tính tổng mét ước tính (hiển thị read-only)
+  const estimatedTotal = (() => {
+    if (orderType === 'rolls' && watchedQty && watchedRollLength) {
+      return (Number(watchedQty) * Number(watchedRollLength)).toLocaleString()
+    }
+    if (orderType === 'pieces' && watchedQty && watchedPieceLength) {
+      return (Number(watchedQty) * Number(watchedPieceLength)).toLocaleString()
+    }
+    return null
+  })()
 
   const onSubmit = async (values: CreateOrderOutput) => {
     setSubmitStatus('saving')
@@ -192,19 +213,103 @@ export default function NewOrderForm() {
             />
           </Field>
 
-          {/* Length */}
-          <Field label="Length (m)" required error={errors.lengthM?.message} hint="Order length in metres">
-            <input
-              id="field-lengthM"
-              type="number"
-              min={1}
-              max={100000}
-              step={1}
-              placeholder="e.g. 12000"
-              className={inputCls(true, !!errors.lengthM)}
-              {...register('lengthM', { valueAsNumber: true })}
-            />
+          {/* Kiểu đơn hàng */}
+          <Field label="Kiểu đơn hàng" required>
+            <select
+              id="field-orderType"
+              className={inputCls(false, false)}
+              {...register('orderType')}
+            >
+              <option value="meters">Theo tổng mét</option>
+              <option value="rolls">Theo cuộn (qty × mét/cuộn)</option>
+              <option value="pieces">Gia công tấm (qty × chiều dài tấm)</option>
+            </select>
           </Field>
+
+          {/* Length — chỉ hiện khi orderType = "meters" */}
+          {orderType === 'meters' && (
+            <Field label="Tổng mét (m)" required error={errors.lengthM?.message} hint="Tổng chiều dài đơn hàng">
+              <input
+                id="field-lengthM"
+                type="number"
+                min={1}
+                max={100000}
+                step={1}
+                placeholder="e.g. 12000"
+                className={inputCls(true, !!errors.lengthM)}
+                {...register('lengthM', { valueAsNumber: true })}
+              />
+            </Field>
+          )}
+
+          {/* Rolls: số cuộn + mét/cuộn */}
+          {orderType === 'rolls' && (
+            <>
+              <Field label="Số cuộn" required error={errors.qty?.message}>
+                <input
+                  id="field-qty-rolls"
+                  type="number"
+                  min={1}
+                  step={1}
+                  placeholder="e.g. 200"
+                  className={inputCls(true, !!errors.qty)}
+                  {...register('qty', { valueAsNumber: true })}
+                />
+              </Field>
+              <Field label="Mét/cuộn" required error={errors.rollLength?.message} hint="Số mét mỗi cuộn">
+                <input
+                  id="field-rollLength"
+                  type="number"
+                  min={0.1}
+                  step={0.01}
+                  placeholder="e.g. 50"
+                  className={inputCls(true, !!errors.rollLength)}
+                  {...register('rollLength', { valueAsNumber: true })}
+                />
+              </Field>
+              {/* Cần trường lengthM ẩn — dùng giá trị tính toán */}
+              <input type="hidden" {...register('lengthM', { valueAsNumber: true })} value={estimatedTotal ? Number(estimatedTotal.replace(/,/g, '')) : ''} />
+            </>
+          )}
+
+          {/* Pieces: số tấm + chiều dài tấm */}
+          {orderType === 'pieces' && (
+            <>
+              <Field label="Số tấm" required error={errors.qty?.message}>
+                <input
+                  id="field-qty-pieces"
+                  type="number"
+                  min={1}
+                  step={1}
+                  placeholder="e.g. 4200"
+                  className={inputCls(true, !!errors.qty)}
+                  {...register('qty', { valueAsNumber: true })}
+                />
+              </Field>
+              <Field label="Chiều dài tấm (m)" required error={errors.pieceLength?.message}>
+                <input
+                  id="field-pieceLength"
+                  type="number"
+                  min={0.01}
+                  step={0.01}
+                  placeholder="e.g. 2.44"
+                  className={inputCls(true, !!errors.pieceLength)}
+                  {...register('pieceLength', { valueAsNumber: true })}
+                />
+              </Field>
+              {/* Cần trường lengthM ẩn — dùng giá trị tính toán */}
+              <input type="hidden" {...register('lengthM', { valueAsNumber: true })} value={estimatedTotal ? Number(estimatedTotal.replace(/,/g, '')) : ''} />
+            </>
+          )}
+
+          {/* Tổng mét ước tính (read-only, hiện khi rolls hoặc pieces) */}
+          {(orderType === 'rolls' || orderType === 'pieces') && estimatedTotal && (
+            <Field label="Tổng mét ước tính">
+              <div className="w-full bg-surface-container-low border-[0.5px] border-outline-variant rounded px-md py-[10px] font-mono text-type-mono text-on-surface tabular-nums">
+                {estimatedTotal} m
+              </div>
+            </Field>
+          )}
 
           {/* GSM */}
           <Field label="GSM" required error={errors.gsm?.message} hint="Grams per square metre">
@@ -315,6 +420,35 @@ export default function NewOrderForm() {
                 Flame-Retardant (FR) treatment required
               </label>
             </div>
+
+            {/* Eyelet */}
+            <div className="sm:col-span-2 flex items-center gap-sm">
+              <input
+                id="field-hasEyelet"
+                type="checkbox"
+                className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
+                {...register('hasEyelet')}
+              />
+              <label
+                htmlFor="field-hasEyelet"
+                className="text-body-md font-noto text-on-surface cursor-pointer select-none"
+              >
+                Có eyelet
+              </label>
+            </div>
+            {watchedHasEyelet && (
+              <Field label="Màu eyelet" error={errors.eyeletColor?.message}>
+                <input
+                  id="field-eyeletColor"
+                  type="text"
+                  placeholder="e.g. SILVER, BLACK"
+                  className={inputCls(false, !!errors.eyeletColor)}
+                  {...register('eyeletColor', {
+                    setValueAs: (v: string) => (v === '' ? null : v),
+                  })}
+                />
+              </Field>
+            )}
 
             {/* Description */}
             <div className="sm:col-span-2">

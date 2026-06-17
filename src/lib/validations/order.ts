@@ -111,6 +111,15 @@ export const createOrderSchema = z.object({
     .transform((v) => v.trim())
     .nullable()
     .optional(),
+
+  // Kiểu đơn hàng
+  orderType: z.enum(['meters', 'rolls', 'pieces']).default('meters'),
+  rollLength: z.number().positive('Số mét/cuộn phải lớn hơn 0').nullable().optional(),
+  pieceLength: z.number().positive('Chiều dài tấm phải lớn hơn 0').nullable().optional(),
+
+  // Eyelet
+  hasEyelet: z.boolean().default(false),
+  eyeletColor: z.string().max(50, 'Eyelet color must be 50 characters or fewer').nullable().optional(),
 })
 
 export type CreateOrderInput = z.input<typeof createOrderSchema>
@@ -232,10 +241,17 @@ export const updateOrderSchema = z.object({
     .transform((v) => v.trim())
     .nullable()
     .optional(),
+
+  // Kiểu đơn hàng
+  orderType: z.enum(['meters', 'rolls', 'pieces']).optional(),
+  rollLength: z.number().positive('Số mét/cuộn phải lớn hơn 0').nullable().optional(),
+  pieceLength: z.number().positive('Chiều dài tấm phải lớn hơn 0').nullable().optional(),
+
+  // Eyelet
+  hasEyelet: z.boolean().optional(),
+  eyeletColor: z.string().max(50, 'Eyelet color must be 50 characters or fewer').nullable().optional(),
 })
 
-
-/** Input type for PATCH (before transforms). */
 export type UpdateOrderInput = z.input<typeof updateOrderSchema>
 
 /** Output type for PATCH (after transforms). */

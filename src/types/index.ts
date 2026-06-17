@@ -20,12 +20,14 @@ export type ProductionOrder = Prisma.ProductionOrderGetPayload<object>
  */
 export type SerializedProductionOrder = Omit<
   ProductionOrder,
-  'orderDate' | 'createdAt' | 'updatedAt' | 'uvPct'
+  'orderDate' | 'createdAt' | 'updatedAt' | 'uvPct' | 'rollLength' | 'pieceLength'
 > & {
   orderDate: string
   createdAt: string
   updatedAt: string
   uvPct: string | null
+  rollLength: string | null
+  pieceLength: string | null
 }
 
 /**

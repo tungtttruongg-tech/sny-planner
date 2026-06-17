@@ -43,6 +43,22 @@ model ProductionOrder {
   needleCount  Int?                  // Số kim
   beamCount    Int?                  // Số dàn
 
+  // Kiểu đơn hàng — xác định cách tính tổng mét
+  orderType   String   @default("meters")
+  // "rolls"  = tính theo cuộn (qty × rollLength)
+  // "meters" = tính theo tổng mét (lengthM)
+  // "pieces" = gia công tấm (qty × pieceLength)
+
+  rollLength  Decimal? @db.Decimal(10, 2)
+  // Số mét/cuộn — chỉ dùng khi orderType = "rolls"
+
+  pieceLength Decimal? @db.Decimal(10, 2)
+  // Chiều dài tấm (m) — chỉ dùng khi orderType = "pieces"
+
+  // Eyelet — phụ kiện khoen trên sản phẩm lưới
+  hasEyelet   Boolean  @default(false)  // Có eyelet không
+  eyeletColor String?                   // Màu eyelet
+
   // Workflow status
   status       String   @default("PENDING") // PENDING | IN_PRODUCTION | DONE | CANCELLED
 

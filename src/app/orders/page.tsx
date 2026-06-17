@@ -50,6 +50,8 @@ export default async function OrdersPage() {
       createdAt: o.createdAt.toISOString(),
       updatedAt: o.updatedAt.toISOString(),
       uvPct: o.uvPct != null ? o.uvPct.toString() : null,
+      rollLength:  o.rollLength  != null ? o.rollLength.toString()  : null,
+      pieceLength: o.pieceLength != null ? o.pieceLength.toString() : null,
     }))
   } catch (err) {
     console.error('[OrdersPage] DB fetch failed:', err)

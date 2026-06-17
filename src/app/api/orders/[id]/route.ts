@@ -99,6 +99,13 @@ export async function PATCH(
   if ('beamCount' in data)   updateData.beamCount   = data.beamCount
   // Mã Masterbatch màu
   if ('mbCode' in data)      updateData.mbCode      = data.mbCode
+  // Kiểu đơn hàng
+  if (data.orderType !== undefined) updateData.orderType = data.orderType
+  if ('rollLength' in data)  updateData.rollLength  = data.rollLength
+  if ('pieceLength' in data) updateData.pieceLength = data.pieceLength
+  // Eyelet
+  if (data.hasEyelet !== undefined) updateData.hasEyelet = data.hasEyelet
+  if ('eyeletColor' in data) updateData.eyeletColor = data.eyeletColor
 
   // 4. Update in DB
   try {

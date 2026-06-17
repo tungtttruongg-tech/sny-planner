@@ -19,6 +19,11 @@ export type AssignmentDetail = {
     gsm: number
     color: string
     mbCode: string | null
+    qty: number | null
+    meshType: string | null
+    needleCount: number | null
+    hasEyelet: boolean
+    eyeletColor: string | null
   }
 }
 
@@ -255,6 +260,38 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
                     <dt className="text-label-sm font-inter text-secondary">Mã màu (MB Code)</dt>
                     <dd className="text-body-md font-mono text-on-surface">{assignment.order.mbCode}</dd>
                   </div>
+                )}
+                {assignment.order.qty != null && (
+                  <div>
+                    <dt className="text-label-sm font-inter text-secondary">Số lượng</dt>
+                    <dd className="text-body-md font-mono text-on-surface">{assignment.order.qty.toLocaleString()} cuộn</dd>
+                  </div>
+                )}
+                {assignment.order.meshType && (
+                  <div>
+                    <dt className="text-label-sm font-inter text-secondary">Loại lưới</dt>
+                    <dd className="text-body-md font-noto text-on-surface">{assignment.order.meshType}</dd>
+                  </div>
+                )}
+                {assignment.order.needleCount != null && (
+                  <div>
+                    <dt className="text-label-sm font-inter text-secondary">Số kim</dt>
+                    <dd className="text-body-md font-mono text-on-surface">{assignment.order.needleCount}</dd>
+                  </div>
+                )}
+                {assignment.order.hasEyelet && (
+                  <>
+                    <div>
+                      <dt className="text-label-sm font-inter text-secondary">Eyelet</dt>
+                      <dd className="text-body-md font-noto text-on-surface">Có</dd>
+                    </div>
+                    {assignment.order.eyeletColor && (
+                      <div>
+                        <dt className="text-label-sm font-inter text-secondary">Màu eyelet</dt>
+                        <dd className="text-body-md font-noto text-on-surface">{assignment.order.eyeletColor}</dd>
+                      </div>
+                    )}
+                  </>
                 )}
                 {assignment.allocatedMeters && (
                   <div className="col-span-2">

@@ -105,10 +105,27 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
 
   useEffect(() => { fetchMachineRows() }, [fetchMachineRows])
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } =
     useForm<UpdateOrderInput, unknown, UpdateOrderOutput>({
       resolver: zodResolver(updateOrderSchema),
     })
+
+  // Kiểu đơn hàng — watch để điều kiện render trong edit mode
+  const editOrderType = watch('orderType')
+  const editQty = watch('qty')
+  const editRollLength = watch('rollLength')
+  const editPieceLength = watch('pieceLength')
+  const editHasEyelet = watch('hasEyelet')
+
+  const editEstimatedTotal = (() => {
+    if (editOrderType === 'rolls' && editQty && editRollLength) {
+      return (Number(editQty) * Number(editRollLength)).toLocaleString()
+    }
+    if (editOrderType === 'pieces' && editQty && editPieceLength) {
+      return (Number(editQty) * Number(editPieceLength)).toLocaleString()
+    }
+    return null
+  })()
 
   const enterEdit = () => {
     setSaveError(null)
@@ -124,6 +141,13 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
       meshType: currentOrder.meshType ?? '',
       needleCount: currentOrder.needleCount ?? undefined,
       beamCount: currentOrder.beamCount ?? undefined,
+      // Kiểu đơn hàng
+      orderType: (currentOrder.orderType as 'meters' | 'rolls' | 'pieces') ?? 'meters',
+      rollLength: currentOrder.rollLength != null ? parseFloat(currentOrder.rollLength) : null,
+      pieceLength: currentOrder.pieceLength != null ? parseFloat(currentOrder.pieceLength) : null,
+      // Eyelet
+      hasEyelet: currentOrder.hasEyelet,
+      eyeletColor: currentOrder.eyeletColor ?? undefined,
     })
     setMode('edit')
   }
@@ -223,6 +247,25 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           <ViewField label="GSM"          value={currentOrder.gsm}                              mono />
           <ViewField label="Color"        value={currentOrder.color}                            />
           <ViewField label="Mã màu (MB Code)" value={currentOrder.mbCode ?? null}               mono />
+          <ViewField label="Kiểu đơn" value={
+            currentOrder.orderType === 'rolls'  ? 'Theo cuộn' :
+            currentOrder.orderType === 'pieces' ? 'Gia công tấm' :
+            'Theo tổng mét'
+          } />
+          {currentOrder.rollLength != null && (
+            <ViewField label="Mét/cuộn" value={`${parseFloat(currentOrder.rollLength).toLocaleString()} m/cuộn`} mono />
+          )}
+          {currentOrder.pieceLength != null && (
+            <ViewField label="Chiều dài tấm" value={`${parseFloat(currentOrder.pieceLength)} m`} mono />
+          )}
+          <ViewField label="Eyelet" value={
+            currentOrder.hasEyelet
+              ? <span className="text-on-surface font-medium font-inter text-label-md">Có</span>
+              : <span className="text-outline font-inter text-label-md">Không</span>
+          } />
+          {currentOrder.hasEyelet && currentOrder.eyeletColor && (
+            <ViewField label="Màu eyelet" value={currentOrder.eyeletColor} />
+          )}
         </dl>
 
         {/* Optional fields */}
@@ -389,9 +432,35 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           <FormField label="Width (m)"   required error={errors.widthM?.message}>
             <input id="edit-widthM" type="number" min={0.1} max={20} step={0.1} className={inputCls(true, !!errors.widthM)} {...register('widthM', { valueAsNumber: true })} />
           </FormField>
-          <FormField label="Length (m)"  required error={errors.lengthM?.message}>
+          <FormField label="Length (m)"  required={editOrderType === 'meters'} error={errors.lengthM?.message}>
             <input id="edit-lengthM" type="number" min={1} max={100000} step={1} className={inputCls(true, !!errors.lengthM)} {...register('lengthM', { valueAsNumber: true })} />
           </FormField>
+          <FormField label="Kiểu đơn" error={errors.orderType?.message}>
+            <select id="edit-orderType" className={inputCls(false, false)} {...register('orderType')}>
+              <option value="meters">Theo tổng mét</option>
+              <option value="rolls">Theo cuộn (qty × mét/cuộn)</option>
+              <option value="pieces">Gia công tấm (qty × chiều dài tấm)</option>
+            </select>
+          </FormField>
+          {editOrderType === 'rolls' && (
+            <FormField label="Mét/cuộn" error={errors.rollLength?.message} hint="Số mét mỗi cuộn">
+              <input id="edit-rollLength" type="number" min={0.1} step={0.01} className={inputCls(true, !!errors.rollLength)}
+                {...register('rollLength', { valueAsNumber: true })} />
+            </FormField>
+          )}
+          {editOrderType === 'pieces' && (
+            <FormField label="Chiều dài tấm (m)" error={errors.pieceLength?.message}>
+              <input id="edit-pieceLength" type="number" min={0.01} step={0.01} className={inputCls(true, !!errors.pieceLength)}
+                {...register('pieceLength', { valueAsNumber: true })} />
+            </FormField>
+          )}
+          {(editOrderType === 'rolls' || editOrderType === 'pieces') && editEstimatedTotal && (
+            <FormField label="Tổng mét ước tính">
+              <div className="w-full bg-surface-container-low border-[0.5px] border-outline-variant rounded px-md py-[10px] font-mono text-type-mono text-on-surface tabular-nums">
+                {editEstimatedTotal} m
+              </div>
+            </FormField>
+          )}
           <FormField label="GSM"         required error={errors.gsm?.message}>
             <input id="edit-gsm" type="number" min={1} max={500} step={1} className={inputCls(true, !!errors.gsm)} {...register('gsm', { valueAsNumber: true })} />
           </FormField>
@@ -428,6 +497,24 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
               Flame-Retardant (FR) treatment required
             </label>
           </div>
+          {/* Eyelet */}
+          <div className="sm:col-span-2 flex items-center gap-sm">
+            <input id="edit-hasEyelet" type="checkbox" className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer" {...register('hasEyelet')} />
+            <label htmlFor="edit-hasEyelet" className="text-body-md font-noto text-on-surface cursor-pointer select-none">
+              Có eyelet
+            </label>
+          </div>
+          {editHasEyelet && (
+            <FormField label="Màu eyelet" error={errors.eyeletColor?.message}>
+              <input
+                id="edit-eyeletColor"
+                type="text"
+                placeholder="e.g. SILVER, BLACK"
+                className={inputCls(false, !!errors.eyeletColor)}
+                {...register('eyeletColor', { setValueAs: (v: string) => (v === '' ? null : v) })}
+              />
+            </FormField>
+          )}
           <div className="sm:col-span-2">
             <FormField label="Description" error={errors.description?.message} hint="Max 200 characters">
               <textarea id="edit-description" rows={2} className={`${inputCls(false, !!errors.description)} resize-none`} {...register('description')} />
