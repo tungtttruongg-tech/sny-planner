@@ -11,7 +11,7 @@ export interface SerializedMaterial {
   id: string
   name: string
   currentStock: string
-  minThreshold: string
+  minThreshold: string | null  // null = chưa đặt ngưỡng
   unit: string
   note: string | null
   createdAt: string
@@ -26,7 +26,9 @@ interface Props {
 
 export default function EditMaterialModal({ material, onUpdated, onClose }: Props) {
   const [currentStock, setCurrentStock] = useState(parseFloat(material.currentStock).toString())
-  const [minThreshold, setMinThreshold] = useState(parseFloat(material.minThreshold).toString())
+  const [minThreshold, setMinThreshold] = useState(
+    material.minThreshold != null ? parseFloat(material.minThreshold).toString() : ''
+  )
   const [note, setNote]                 = useState(material.note ?? '')
   const [error, setError]               = useState('')
   const [isLoading, setIsLoading]       = useState(false)
@@ -36,9 +38,13 @@ export default function EditMaterialModal({ material, onUpdated, onClose }: Prop
     setError('')
 
     const stock = parseFloat(currentStock)
-    const threshold = parseFloat(minThreshold)
     if (isNaN(stock) || stock < 0) { setError('Tồn kho phải là số không âm'); return }
-    if (isNaN(threshold) || threshold < 0) { setError('Ngưỡng tối thiểu phải là số không âm'); return }
+    // minThreshold is optional — null means "chưa đặt ngưỡng"
+    const threshold = minThreshold.trim() === '' ? null : parseFloat(minThreshold)
+    if (threshold !== null && (isNaN(threshold) || threshold < 0)) {
+      setError('Ngưỡng tối thiểu phải là số không âm')
+      return
+    }
 
     setIsLoading(true)
     try {
@@ -122,16 +128,16 @@ export default function EditMaterialModal({ material, onUpdated, onClose }: Prop
             </div>
             <div className="flex-1">
               <label className="block text-xs font-medium text-secondary mb-1">
-                Ngưỡng tối thiểu (kg) <span className="text-error">*</span>
+                Ngưỡng tối thiểu (kg)
               </label>
               <input
                 id="edit-material-threshold"
                 type="number"
-                required
                 min={0}
                 step={0.01}
                 value={minThreshold}
                 onChange={e => setMinThreshold(e.target.value)}
+                placeholder="Để trống = chưa đặt ngưỡng"
                 className={inputCls()}
               />
             </div>

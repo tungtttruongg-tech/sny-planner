@@ -16,9 +16,11 @@ const updateMaterialSchema = z.object({
     .min(0, 'Tồn kho không được âm')
     .optional(),
 
+  // null = remove threshold (“chưa đặt ngưỡng”); number = set threshold
   minThreshold: z
     .number({ message: 'Ngưỡng tối thiểu phải là số' })
     .min(0, 'Ngưỡng tối thiểu không được âm')
+    .nullable()
     .optional(),
 
   note: z
@@ -71,7 +73,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const serialized = {
       ...material,
       currentStock: material.currentStock.toString(),
-      minThreshold: material.minThreshold.toString(),
+      minThreshold: material.minThreshold?.toString() ?? null,
       createdAt: material.createdAt.toISOString(),
       updatedAt: material.updatedAt.toISOString(),
     }

@@ -45,7 +45,7 @@ export async function GET() {
     const serialized = materials.map((m) => ({
       ...m,
       currentStock: m.currentStock.toString(),
-      minThreshold: m.minThreshold.toString(),
+      minThreshold: m.minThreshold?.toString() ?? null,
       createdAt: m.createdAt.toISOString(),
       updatedAt: m.updatedAt.toISOString(),
     }))
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     const serialized = {
       ...material,
       currentStock: material.currentStock.toString(),
-      minThreshold: material.minThreshold.toString(),
+      minThreshold: material.minThreshold?.toString() ?? null,
       createdAt: material.createdAt.toISOString(),
       updatedAt: material.updatedAt.toISOString(),
     }

@@ -80,11 +80,13 @@ model Material {
   id           String   @id @default(cuid())
   name         String   // e.g. "MF", "UV 4%", "Tái chế", "FR", "IR"
   currentStock Decimal  @db.Decimal(10, 2)  // kg hiện có
-  minThreshold Decimal  @db.Decimal(10, 2)  // ngưỡng tối thiểu cảnh báo
+  minThreshold Decimal? @db.Decimal(10, 2)  // ngưỡng tối thiểu cảnh báo — null = chưa đặt ngưỡng
   unit         String   @default("kg")
   note         String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  transactions MaterialTransaction[]
 
   @@map("materials")
 }
@@ -107,4 +109,31 @@ model MachineAssignment {
 
   @@unique([machineId, startDate])
   @@map("machine_assignments")
+}
+
+model MaterialTransaction {
+  id         String   @id @default(cuid())
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  // txType valid values:
+  // "in"         = nhập kho
+  // "out_using"  = xuất sử dụng sản xuất
+  // "out_broken" = xuất hỏng (HDPE BROKEN)
+  // "out_tape"   = xuất làm băng keo (OUT TAPE)
+  // "out_reject" = xuất reject
+  txType     String
+
+  quantityKg Decimal  @db.Decimal(10, 2)   // số kg
+  txDate     DateTime                       // ngày giao dịch
+  mbPct      Decimal? @db.Decimal(5, 2)    // % MB trên 1 tấn nhựa (chỉ dùng cho loại MB)
+  orderId    String?                        // link đơn hàng nếu có (optional)
+  note       String?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([materialId])
+  @@index([txDate])
+  @@map("material_transactions")
 }

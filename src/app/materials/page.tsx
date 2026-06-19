@@ -5,10 +5,11 @@
 // Replaces the MOCK page. Planner manually manages stock levels and thresholds.
 
 import { useState, useEffect, useCallback } from 'react'
-import type { Metadata } from 'next'
 import AddMaterialModal from '@/components/materials/AddMaterialModal'
 import EditMaterialModal, { type SerializedMaterial } from '@/components/materials/EditMaterialModal'
 import MaterialsTable from '@/components/materials/MaterialsTable'
+import TransactionHistoryModal from '@/components/materials/TransactionHistoryModal'
+import ImportMaterialReportModal from '@/components/materials/ImportMaterialReportModal'
 
 // Note: metadata export is not supported in 'use client' components.
 // Page title is set via the <title> in the HTML head from layout.tsx.
@@ -84,10 +85,12 @@ export default function MaterialsPage() {
   const [materials, setMaterials]     = useState<SerializedMaterial[]>([])
   const [isLoading, setIsLoading]     = useState(true)
   const [fetchError, setFetchError]   = useState<string | null>(null)
-  const [showAddModal, setShowAddModal]   = useState(false)
-  const [editTarget, setEditTarget]       = useState<SerializedMaterial | null>(null)
-  const [deleteTarget, setDeleteTarget]   = useState<SerializedMaterial | null>(null)
-  const [isDeleting, setIsDeleting]       = useState(false)
+  const [showAddModal, setShowAddModal]       = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [editTarget, setEditTarget]           = useState<SerializedMaterial | null>(null)
+  const [deleteTarget, setDeleteTarget]       = useState<SerializedMaterial | null>(null)
+  const [historyTarget, setHistoryTarget]     = useState<SerializedMaterial | null>(null)
+  const [isDeleting, setIsDeleting]           = useState(false)
 
   // ── Fetch all materials ────────────────────────────────────────────────────
 
@@ -126,11 +129,13 @@ export default function MaterialsPage() {
     }
   }
 
-  // ── Derived summary stats ──────────────────────────────────────────────────
+  // ── Derived summary stats (null-safe) ──────────────────────────────────────
 
-  const lowStockCount = materials.filter(
-    (m) => parseFloat(m.currentStock) < parseFloat(m.minThreshold)
-  ).length
+  // Only count materials where minThreshold is set (not null)
+  const lowStockCount = materials.filter((m) => {
+    if (m.minThreshold == null) return false
+    return parseFloat(m.currentStock) < parseFloat(m.minThreshold)
+  }).length
 
   const totalKg = materials.reduce((sum, m) => sum + parseFloat(m.currentStock), 0)
 
@@ -145,14 +150,24 @@ export default function MaterialsPage() {
           <h1 className="text-2xl font-inter font-semibold text-primary tracking-tight">Materials</h1>
           <p className="text-sm font-noto text-secondary mt-1">Quản lý tồn kho nguyên liệu</p>
         </div>
-        <button
-          id="btn-add-material"
-          onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center justify-center gap-2 bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 transition-colors"
-        >
-          <span className="material-symbols-outlined text-[18px]">add</span>
-          Add material
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            id="btn-import-material-report"
+            onClick={() => setShowImportModal(true)}
+            className="inline-flex items-center justify-center gap-2 border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">upload_file</span>
+            Import báo cáo
+          </button>
+          <button
+            id="btn-add-material"
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center justify-center gap-2 bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">add</span>
+            Add material
+          </button>
+        </div>
       </div>
 
       {/* Error banner */}
@@ -201,6 +216,7 @@ export default function MaterialsPage() {
           materials={materials}
           onEdit={setEditTarget}
           onDelete={setDeleteTarget}
+          onHistory={setHistoryTarget}
         />
       )}
 
@@ -212,12 +228,29 @@ export default function MaterialsPage() {
         />
       )}
 
+      {/* Import Excel report modal */}
+      {showImportModal && (
+        <ImportMaterialReportModal
+          onImported={fetchMaterials}
+          onClose={() => { setShowImportModal(false); fetchMaterials() }}
+        />
+      )}
+
       {/* Edit modal */}
       {editTarget && (
         <EditMaterialModal
           material={editTarget}
           onUpdated={() => { fetchMaterials(); setEditTarget(null) }}
           onClose={() => setEditTarget(null)}
+        />
+      )}
+
+      {/* Transaction history modal */}
+      {historyTarget && (
+        <TransactionHistoryModal
+          material={historyTarget}
+          onClose={() => setHistoryTarget(null)}
+          onStockChanged={fetchMaterials}
         />
       )}
 
