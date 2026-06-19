@@ -2,7 +2,7 @@
 > Ground truth for all AI coding agents (Antigravity, Cursor).
 > READ THIS ENTIRE FILE before generating any code.
 > If context in this file conflicts with your judgment → this file wins.
-> Last updated: 10/06/2026
+> Last updated: 18/06/2026
 
 ---
 
@@ -23,7 +23,7 @@ Replace 4 disconnected Excel files with 1 system.
 Flow: Sales Order → Production Order → Machine Schedule → Material Planning.
 
 **Phase 1 (DONE):** Endusers enter data into tool. Stop using Excel.
-**Current focus:** NONE — Phase 1 complete. Next = Auth (NextAuth.js v5) + Work Order formulas.
+**Current focus:** Material transaction tracking + Excel import. Next = Auth (NextAuth.js v5) + Work Order formulas.
 **Phase 2 (later):** AI automation, auto-scheduling, formula calculations, alerts.
 
 ---
@@ -74,13 +74,50 @@ Flow: Sales Order → Production Order → Machine Schedule → Material Plannin
 - Grid 40×days, assign/edit/remove, overlap check UTC+7.
 - `AssignFromOrderModal`: assign from order detail page.
 
+### Multi-machine assignment ✅
+- 1 order can run on multiple machines simultaneously (orderId no longer `@unique`).
+- `allocatedMeters` field tracks meters per assignment — default 50/50 split.
+- OrderDetail page shows "MÁY ĐANG CHẠY" section listing all assignments.
+- `AssignFromOrderModal` pre-fills `allocatedMeters` with `order.lengthM / 2`.
+
+### Schedule DetailModal — full order details ✅
+- Clicking an assigned cell shows: Width, Length, GSM, Color, MB Code, Qty, Mesh Type, Needle Count, Eyelet, Eyelet Color, Allocated Meters.
+
 ### M3 ✅ Materials functional
 - CRUD inventory, low stock alerts, summary cards.
+- Status badge: **"Chưa đặt ngưỡng"** (grey) when `minThreshold` is null.
+
+### Material Transaction system ✅
+- `src/components/materials/AddTransactionModal.tsx` — manual IN/OUT entry with optional MB% field.
+- `src/components/materials/TransactionHistoryModal.tsx` — history per material, delete per row.
+- `src/app/api/materials/[id]/transactions/route.ts` — GET history, POST new transaction (atomic stock update).
+- `src/app/api/materials/[id]/transactions/[txId]/route.ts` — DELETE (reverses stock impact atomically).
+
+### Material Excel Import ✅
+- `src/lib/excel/parseMaterialReport.ts` — parses SNY daily HDPE/MB report (FIRST STOCK | IN | HDPE BROKEN | OUT TAPE | REJECT | OUT USING | LAST STOCK).
+- `src/components/materials/ImportMaterialReportModal.tsx` — 3-step: upload .xlsx → preview matched/new → confirm.
+- `src/app/api/materials/import-transactions/route.ts` — preview only, no DB write.
+- `src/app/api/materials/import-transactions/confirm/route.ts` — creates `MaterialTransaction` records, sets `currentStock = lastStock` (file is source of truth), auto-creates unmatched materials with `minThreshold = null`.
+
+### Order type variants ✅
+- `NewOrderForm` and `OrderDetail` edit mode support 3 order types with conditional fields:
+  - `"meters"`: shows `lengthM` as "Tổng mét".
+  - `"rolls"`: shows `qty` (cuộn) + `rollLength` (mét/cuộn), auto-calculates total.
+  - `"pieces"`: shows `qty` (tấm) + `pieceLength` (chiều dài tấm), auto-calculates total.
+
+### Eyelet tracking ✅
+- `hasEyelet` checkbox + conditional `eyeletColor` field in `NewOrderForm` and `OrderDetail` edit mode.
+- Shown in Schedule `DetailModal` when `hasEyelet = true`.
+
+### MB Code field ✅
+- `mbCode` text field after Color in order forms — for masterbatch color code tracking (e.g. MYD4501A, 7079, LS309315).
 
 ### UX Polish ✅
 - Redirect to detail after order creation.
 - No top nav tabs.
 - Side nav: Production, Schedule, Materials active; Reports, Settings disabled with Phase 2 pill.
+- Table row hover states + empty state messages throughout.
+- Modal backdrop click to close.
 
 ### Navigation (current state)
 - **Top nav:** logo + Phase 1 badge + bell + avatar only (NO tabs)
@@ -116,39 +153,52 @@ model ProductionOrder {
 
   // Fabric specs
   widthM       Float    // roll width in metres (e.g. 4.0)
-  lengthM      Float    // order length in metres
+  lengthM      Float    // order length in metres (or calculated total for rolls/pieces)
   gsm          Int      // grams per square metre (e.g. 165)
   color        String   // e.g. "BLACK", "WHITE"
+  mbCode       String?  // M\u00e3 Masterbatch m\u00e0u \u2014 e.g. "MYD4501A", "7079", "LS309315"
 
-  // Optional order details (added S2)
-  qty          Int?                  // quantity in rolls
+  // Optional order details
+  qty          Int?                  // quantity in rolls or pieces
   uvPct        Decimal?  @db.Decimal(5, 2) // UV treatment percentage 0-100
   frFlag       Boolean   @default(false)   // flame-retardant treatment
   description  String?               // free-text order description
   remark       String?               // free-text internal remark
 
-  // Technical specs (added M3)
-  meshType     String?               // Thể loại lưới
-  needleCount  Int?                  // Số kim
-  beamCount    Int?                  // Số dàn
+  // Technical specs
+  meshType     String?               // Th\u1ec3 lo\u1ea1i l\u01b0\u1edbi
+  needleCount  Int?                  // S\u1ed1 kim
+  beamCount    Int?                  // S\u1ed1 d\u00e0n
+
+  // Ki\u1ec3u \u0111\u01a1n h\u00e0ng \u2014 x\u00e1c \u0111\u1ecbnh c\u00e1ch t\u00ednh t\u1ed5ng m\u00e9t
+  orderType    String   @default("meters")
+  // "meters" = t\u1ed5ng m\u00e9t tr\u1ef1c ti\u1ebfp (lengthM)
+  // "rolls"  = qty \u00d7 rollLength
+  // "pieces" = qty \u00d7 pieceLength
+
+  rollLength   Decimal? @db.Decimal(10, 2) // m\u00e9t/cu\u1ed9n \u2014 ch\u1ec9 d\u00f9ng khi orderType = "rolls"
+  pieceLength  Decimal? @db.Decimal(10, 2) // chi\u1ec1u d\u00e0i t\u1ea5m (m) \u2014 ch\u1ec9 d\u00f9ng khi orderType = "pieces"
+
+  // Eyelet \u2014 ph\u1ee5 ki\u1ec7n khoen tr\u00ean s\u1ea3n ph\u1ea9m l\u01b0\u1edbi
+  hasEyelet    Boolean  @default(false)  // C\u00f3 eyelet kh\u00f4ng
+  eyeletColor  String?                   // M\u00e0u eyelet
 
   // Workflow status
   status       String   @default("PENDING") // PENDING | IN_PRODUCTION | DONE | CANCELLED
 
   // dataSource tracking for AI training data quality:
-  // "manual" = KH nhập tay thật → dùng cho AI training
-  // "import" = Excel/bulk paste → dùng cho AI training
-  // "seed" = demo data do TESO tạo → KHÔNG dùng cho AI training
+  // "manual" = KH nh\u1eadp tay th\u1eadt \u2192 d\u00f9ng cho AI training
+  // "import" = Excel/bulk paste \u2192 d\u00f9ng cho AI training
+  // "seed" = demo data do TESO t\u1ea1o \u2192 KH\u00d4NG d\u00f9ng cho AI training
   dataSource   String   @default("manual")
 
-  // Relations
-  assignment   MachineAssignment?
+  // Relations \u2014 1 \u0111\u01a1n h\u00e0ng c\u00f3 th\u1ec3 ch\u1ea1y tr\u00ean nhi\u1ec1u m\u00e1y song song
+  assignments  MachineAssignment[]
 
   // Timestamps
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // Composite unique constraint: one PI can have many sub-lines but each (PI, subLine) is unique
   @@unique([piNumber, subLineIndex])
   @@index([piNumber])
   @@index([orderDate])
@@ -157,13 +207,15 @@ model ProductionOrder {
 
 model Material {
   id           String   @id @default(cuid())
-  name         String   // e.g. "MF", "UV 4%", "Tái chế", "FR", "IR"
-  currentStock Decimal  @db.Decimal(10, 2)  // kg hiện có
-  minThreshold Decimal  @db.Decimal(10, 2)  // ngưỡng tối thiểu cảnh báo
+  name         String   // e.g. "MF", "UV 4%", "T\u00e1i ch\u1ebf", "FR", "IR"
+  currentStock Decimal  @db.Decimal(10, 2)  // kg hi\u1ec7n c\u00f3
+  minThreshold Decimal? @db.Decimal(10, 2)  // ng\u01b0\u1ee1ng t\u1ed1i thi\u1ec3u c\u1ea3nh b\u00e1o \u2014 null = ch\u01b0a \u0111\u1eb7t ng\u01b0\u1ee1ng
   unit         String   @default("kg")
   note         String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  transactions MaterialTransaction[]
 
   @@map("materials")
 }
@@ -171,10 +223,14 @@ model Material {
 model MachineAssignment {
   id        String   @id @default(cuid())
   machineId String   // e.g. "M-001" to "M-040"
-  
-  orderId   String   @unique
+
+  // orderId is NOT @unique \u2014 1 order can have multiple machine assignments (parallel production)
+  orderId   String
   order     ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  
+
+  // S\u1ed1 m\u00e9t ph\u00e2n c\u00f4ng cho m\u00e1y n\u00e0y (optional, d\u00f9ng khi chia \u0111\u01a1n)
+  allocatedMeters Decimal? @db.Decimal(10, 2)
+
   startDate DateTime
   endDate   DateTime
 
@@ -183,6 +239,33 @@ model MachineAssignment {
 
   @@unique([machineId, startDate])
   @@map("machine_assignments")
+}
+
+model MaterialTransaction {
+  id         String   @id @default(cuid())
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  // txType valid values:
+  // "in"         = nh\u1eadp kho
+  // "out_using"  = xu\u1ea5t s\u1eed d\u1ee5ng s\u1ea3n xu\u1ea5t
+  // "out_broken" = xu\u1ea5t h\u1ecfng (HDPE BROKEN)
+  // "out_tape"   = xu\u1ea5t l\u00e0m b\u0103ng keo (OUT TAPE)
+  // "out_reject" = xu\u1ea5t reject
+  txType     String
+
+  quantityKg Decimal  @db.Decimal(10, 2)   // s\u1ed1 kg
+  txDate     DateTime                       // ng\u00e0y giao d\u1ecbch
+  mbPct      Decimal? @db.Decimal(5, 2)    // % MB tr\u00ean 1 t\u1ea5n nh\u1ef1a (ch\u1ec9 d\u00f9ng cho lo\u1ea1i MB)
+  orderId    String?                        // link \u0111\u01a1n h\u00e0ng n\u1ebfu c\u00f3 (optional)
+  note       String?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([materialId])
+  @@index([txDate])
+  @@map("material_transactions")
 }
 ```
 
@@ -238,18 +321,21 @@ sny-planner/
 │   │   ├── schedule/        ← M2 functional
 │   │   ├── materials/       ← M3 functional
 │   │   └── api/
-│   │       ├── orders/      
-│   │       ├── materials/   
-│   │       └── assignments/ 
+│   │       ├── orders/      ← CRUD + import + bulk
+│   │       ├── materials/   ← CRUD + [id]/transactions/ + import-transactions/
+│   │       └── assignments/ ← schedule CRUD
 │   ├── components/
 │   │   ├── layout/          ← TopNav.tsx, SideNav.tsx
 │   │   ├── orders/          ← OrderTable, NewOrderForm, OrderDetail, ImportOrdersModal
-│   │   ├── materials/       ← MaterialsTable, AddMaterialModal, EditMaterialModal
+│   │   ├── materials/       ← MaterialsTable, AddMaterialModal, EditMaterialModal,
+│   │   │                       AddTransactionModal, TransactionHistoryModal,
+│   │   │                       ImportMaterialReportModal
 │   │   └── schedule/        ← AssignModal.tsx, DetailModal.tsx, AssignFromOrderModal.tsx
-│   └── lib/
-│       ├── db.ts
-│       ├── validations/order.ts
-│       └── excel/           ← parseOrderList.ts, parsePastedText.ts
+│   ├── lib/
+│   │   ├── db.ts
+│   │   ├── validations/order.ts
+│   │   └── excel/           ← parseOrderList.ts, parsePastedText.ts, parseMaterialReport.ts
+│   └── types/index.ts       ← SerializedProductionOrder, ParsedOrder
 ```
 
 ---
@@ -269,13 +355,19 @@ sny-planner/
 | M2 Machine Schedule | ✅ Done |
 | M3 Materials functional | ✅ Done |
 | UX Polish | ✅ Done |
+| Multi-machine assignment | ✅ Done |
+| Order type variants (rolls/pieces/meters) | ✅ Done |
+| MB Code + Eyelet fields | ✅ Done |
+| Material Transaction system | ✅ Done |
+| Material Excel Import | ✅ Done |
 
 ## 9. Next sprints
 
 | Sprint | Task | Status |
 |---|---|---|
+| Extruder tracking | Theo dõi sản lượng máy kéo sợi theo ngày | ⏳ Chờ Dung confirm scope |
+| Work Order formula | Tính số ngày hoàn thành dựa trên sản lượng/ngày | ⏳ Chờ Dung confirm công thức |
 | Auth | NextAuth.js v5 — 3 roles: Admin/Planner/Viewer | ⏳ Next |
-| Work Order | Implement 4 formulas + verification cases A/B/C/D | ⏳ Next |
 | Phase 2 AI | AI-1 gợi ý lịch, AI-2 cảnh báo NVL, AI-3 chat tiếng Việt | ⏳ Phase 2 |
 
 ---
