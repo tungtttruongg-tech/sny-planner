@@ -52,6 +52,8 @@ export default async function OrdersPage() {
       uvPct: o.uvPct != null ? o.uvPct.toString() : null,
       rollLength:  o.rollLength  != null ? o.rollLength.toString()  : null,
       pieceLength: o.pieceLength != null ? o.pieceLength.toString() : null,
+      qtySqm:         o.qtySqm         != null ? o.qtySqm.toString()         : null,
+      totalWeightKgs: o.totalWeightKgs != null ? o.totalWeightKgs.toString() : null,
     }))
   } catch (err) {
     console.error('[OrdersPage] DB fetch failed:', err)
@@ -94,7 +96,7 @@ export default async function OrdersPage() {
           </Link>
           <Link
             id="btn-new-order"
-            href="/orders/new"
+            href="/orders/new-multi"
             className="inline-flex items-center justify-center gap-sm bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>

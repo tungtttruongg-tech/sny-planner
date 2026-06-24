@@ -57,6 +57,7 @@ export async function GET(request: Request) {
             needleCount: true,
             hasEyelet: true,
             eyeletColor: true,
+            totalWeightKgs: true,
           },
         },
       },

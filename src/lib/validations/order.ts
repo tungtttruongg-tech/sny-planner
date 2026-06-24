@@ -256,3 +256,67 @@ export type UpdateOrderInput = z.input<typeof updateOrderSchema>
 
 /** Output type for PATCH (after transforms). */
 export type UpdateOrderOutput = z.output<typeof updateOrderSchema>
+
+// ── Multi-line order schema ────────────────────────────────────────────────────
+// Used by /api/orders/multi-line POST and the MultiLineOrderForm component.
+// Shared fields apply to ALL sub-lines; per-line fields are in the `lines` array.
+
+const lineItemSchema = z.object({
+  widthM: z.number().gt(0, 'Khổ phải lớn hơn 0').max(20, 'Khổ phải ≤ 20 m'),
+  orderType: z.enum(['meters', 'rolls', 'pieces']).default('rolls'),
+  // lengthM — required for "meters" type, derived for others
+  lengthM: z.number().gt(0).max(100_000).optional(),
+  // qty — used for "rolls" and "pieces"
+  qty: z.number().int().positive().optional(),
+  // rollLength — used for "rolls"
+  rollLength: z.number().positive().optional(),
+  // pieceLength — used for "pieces"
+  pieceLength: z.number().positive().optional(),
+  color: z
+    .string()
+    .min(1, 'Màu là bắt buộc')
+    .max(50)
+    .transform((v) => v.trim().toUpperCase()),
+  // Optional per-line fields
+  uvPct: z.number().min(0).max(100).optional(),
+  frFlag: z.boolean().default(false),
+  // Eyelet — per line because eyelet color can differ per color/size
+  hasEyelet: z.boolean().default(false),
+  eyeletColor: z.string().max(50).optional(),
+})
+
+export const multiLineOrderSchema = z.object({
+  // ── Shared fields ──────────────────────────────────────────────────────────
+  piNumber: z
+    .string()
+    .min(1, 'PI Number là bắt buộc')
+    .max(50)
+    .transform((v) => v.trim()),
+  customer: z
+    .string()
+    .min(1, 'Khách hàng là bắt buộc')
+    .max(100)
+    .transform((v) => v.trim()),
+  orderDate: z
+    .string()
+    .min(1, 'Ngày đặt hàng là bắt buộc')
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày phải theo định dạng YYYY-MM-DD'),
+  gsm: z
+    .number()
+    .int('GSM phải là số nguyên')
+    .gt(0, 'GSM phải lớn hơn 0')
+    .max(500),
+  // Optional shared fields
+  mbCode: z.string().max(50).transform((v) => v.trim()).optional(),
+  meshType: z.string().max(100).transform((v) => v.trim()).optional(),
+  needleCount: z.number().int().positive().optional(),
+  beamCount: z.number().int().positive().optional(),
+  description: z.string().max(200).optional(),
+  remark: z.string().max(200).optional(),
+
+  // ── Per-line fields (hasEyelet/eyeletColor per-line, not shared) ────────────
+  lines: z.array(lineItemSchema).min(1, 'Cần ít nhất 1 dòng hàng'),
+})
+
+export type MultiLineOrderInput  = z.input<typeof multiLineOrderSchema>
+export type MultiLineOrderOutput = z.output<typeof multiLineOrderSchema>

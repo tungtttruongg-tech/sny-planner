@@ -15,6 +15,7 @@ import {
 } from '@/lib/validations/order'
 import type { SerializedProductionOrder } from '@/types'
 import AssignFromOrderModal from '@/components/schedule/AssignFromOrderModal'
+import { calculateOrderWeight } from '@/lib/calculations/orderWeight'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -111,11 +112,14 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
     })
 
   // Kiểu đơn hàng — watch để điều kiện render trong edit mode
-  const editOrderType = watch('orderType')
-  const editQty = watch('qty')
-  const editRollLength = watch('rollLength')
-  const editPieceLength = watch('pieceLength')
-  const editHasEyelet = watch('hasEyelet')
+  const editOrderType    = watch('orderType')
+  const editQty          = watch('qty')
+  const editRollLength   = watch('rollLength')
+  const editPieceLength  = watch('pieceLength')
+  const editHasEyelet    = watch('hasEyelet')
+  const editWidthM       = watch('widthM')
+  const editLengthM      = watch('lengthM')
+  const editGsm          = watch('gsm')
 
   const editEstimatedTotal = (() => {
     if (editOrderType === 'rolls' && editQty && editRollLength) {
@@ -125,6 +129,24 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
       return (Number(editQty) * Number(editPieceLength)).toLocaleString()
     }
     return null
+  })()
+
+  // Trọng lượng ước tính trong edit mode (live)
+  const editEstimatedWeight = (() => {
+    const w = Number(editWidthM)
+    const l = Number(editLengthM)
+    const g = Number(editGsm)
+    if (!w || !g) return null
+    const { totalWeightKgs } = calculateOrderWeight({
+      orderType: editOrderType ?? 'meters',
+      widthM: w,
+      lengthM: l,
+      gsm: g,
+      qty: editQty ? Number(editQty) : null,
+      rollLength: editRollLength ? Number(editRollLength) : null,
+      pieceLength: editPieceLength ? Number(editPieceLength) : null,
+    })
+    return totalWeightKgs > 0 ? totalWeightKgs.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : null
   })()
 
   const enterEdit = () => {
@@ -246,6 +268,13 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           <ViewField label="Length (m)"   value={Number(currentOrder.lengthM).toLocaleString()} mono />
           <ViewField label="GSM"          value={currentOrder.gsm}                              mono />
           <ViewField label="Color"        value={currentOrder.color}                            />
+          {currentOrder.totalWeightKgs != null && (
+            <ViewField
+              label="Trọng lượng (kg)"
+              value={parseFloat(currentOrder.totalWeightKgs).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}
+              mono
+            />
+          )}
           <ViewField label="Mã màu (MB Code)" value={currentOrder.mbCode ?? null}               mono />
           <ViewField label="Kiểu đơn" value={
             currentOrder.orderType === 'rolls'  ? 'Theo cuộn' :
@@ -458,6 +487,13 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
             <FormField label="Tổng mét ước tính">
               <div className="w-full bg-surface-container-low border-[0.5px] border-outline-variant rounded px-md py-[10px] font-mono text-type-mono text-on-surface tabular-nums">
                 {editEstimatedTotal} m
+              </div>
+            </FormField>
+          )}
+          {editEstimatedWeight && (
+            <FormField label="Trọng lượng ước tính (kg)">
+              <div className="w-full bg-surface-container-low border-[0.5px] border-outline-variant rounded px-md py-[10px] font-mono text-type-mono text-on-surface tabular-nums">
+                {editEstimatedWeight} kg
               </div>
             </FormField>
           )}

@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { updateOrderSchema } from '@/lib/validations/order'
+import { calculateOrderWeight } from '@/lib/calculations/orderWeight'
 
 type RouteContext = { params: { id: string } }
 
@@ -107,7 +108,32 @@ export async function PATCH(
   if (data.hasEyelet !== undefined) updateData.hasEyelet = data.hasEyelet
   if ('eyeletColor' in data) updateData.eyeletColor = data.eyeletColor
 
-  // 4. Update in DB
+  // 4. Recalculate weight if any relevant field changed
+  const weightFields = ['widthM', 'lengthM', 'gsm', 'qty', 'rollLength', 'pieceLength', 'orderType']
+  const weightFieldChanged = weightFields.some(f => f in updateData || f in data)
+
+  if (weightFieldChanged) {
+    // Fetch current values so we can fill in whichever fields weren't sent in this patch
+    const current = await prisma.productionOrder.findUnique({
+      where: { id },
+      select: { widthM: true, lengthM: true, gsm: true, qty: true, rollLength: true, pieceLength: true, orderType: true },
+    })
+    if (current) {
+      const { qtySqm, totalWeightKgs } = calculateOrderWeight({
+        orderType:   (updateData.orderType   ?? current.orderType)   as string,
+        widthM:      (updateData.widthM      ?? current.widthM)      as number,
+        lengthM:     (updateData.lengthM     ?? current.lengthM)     as number,
+        gsm:         (updateData.gsm         ?? current.gsm)         as number,
+        qty:         (updateData.qty         ?? current.qty)         as number | null,
+        rollLength:  (updateData.rollLength  ?? current.rollLength  != null ? Number(current.rollLength)  : null) as number | null,
+        pieceLength: (updateData.pieceLength ?? current.pieceLength != null ? Number(current.pieceLength) : null) as number | null,
+      })
+      updateData.qtySqm         = qtySqm
+      updateData.totalWeightKgs = totalWeightKgs
+    }
+  }
+
+  // 5. Update in DB
   try {
     const order = await prisma.productionOrder.update({
       where: { id },

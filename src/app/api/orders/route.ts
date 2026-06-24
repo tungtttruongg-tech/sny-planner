@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { createOrderSchema } from '@/lib/validations/order'
+import { calculateOrderWeight } from '@/lib/calculations/orderWeight'
 
 export async function POST(req: NextRequest) {
   // ── 1. Parse body ──────────────────────────────────────────────────────────
@@ -31,7 +32,18 @@ export async function POST(req: NextRequest) {
 
   const data = parsed.data
 
-  // ── 3. Save to DB ──────────────────────────────────────────────────────────
+  // ── 3. Calculate weight (Case A formula) ──────────────────────────────────
+  const { qtySqm, totalWeightKgs } = calculateOrderWeight({
+    orderType: data.orderType ?? 'meters',
+    widthM: data.widthM,
+    lengthM: data.lengthM,
+    gsm: data.gsm,
+    qty: data.qty ?? null,
+    rollLength: data.rollLength ?? null,
+    pieceLength: data.pieceLength ?? null,
+  })
+
+  // ── 4. Save to DB ──────────────────────────────────────────────────────────
   try {
     const order = await prisma.productionOrder.create({
       data: {
@@ -63,6 +75,9 @@ export async function POST(req: NextRequest) {
         // Eyelet
         hasEyelet: data.hasEyelet ?? false,
         ...(data.eyeletColor != null && { eyeletColor: data.eyeletColor }),
+        // Calculated weight
+        qtySqm,
+        totalWeightKgs,
       },
     })
 

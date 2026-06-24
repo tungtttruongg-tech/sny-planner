@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
     frFlag:       row.frFlag,
     ...(row.description != null && { description: row.description }),
     ...(row.remark      != null && { remark: row.remark }),
+    dataSource: 'import',
   }))
 
   // ── 4. Save to DB ─────────────────────────────────────────────────────────

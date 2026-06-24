@@ -24,6 +24,7 @@ export type AssignmentDetail = {
     needleCount: number | null
     hasEyelet: boolean
     eyeletColor: string | null
+    totalWeightKgs: unknown  // Prisma Decimal — serialised as string over JSON
   }
 }
 
@@ -298,6 +299,14 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
                     <dt className="text-label-sm font-inter text-secondary">Số mét phân công</dt>
                     <dd className="text-body-md font-mono text-on-surface">
                       {Number(assignment.allocatedMeters).toLocaleString()} m
+                    </dd>
+                  </div>
+                )}
+                {assignment.order.totalWeightKgs != null && (
+                  <div className="col-span-2">
+                    <dt className="text-label-sm font-inter text-secondary">Trọng lượng (kg)</dt>
+                    <dd className="text-body-md font-mono text-on-surface">
+                      {Number(assignment.order.totalWeightKgs).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} kg
                     </dd>
                   </div>
                 )}

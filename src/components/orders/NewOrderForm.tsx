@@ -13,6 +13,7 @@ import {
   type CreateOrderInput,
   type CreateOrderOutput,
 } from '@/lib/validations/order'
+import { calculateOrderWeight } from '@/lib/calculations/orderWeight'
 
 // ── Reusable field wrapper ────────────────────────────────────────────────────
 
@@ -81,11 +82,14 @@ export default function NewOrderForm() {
   })
 
   // Kiểu đơn hàng — dùng để hiển thị trường có điều kiện
-  const orderType = watch('orderType')
-  const watchedQty = watch('qty')
-  const watchedRollLength = watch('rollLength')
+  const orderType          = watch('orderType')
+  const watchedQty         = watch('qty')
+  const watchedRollLength  = watch('rollLength')
   const watchedPieceLength = watch('pieceLength')
-  const watchedHasEyelet = watch('hasEyelet')
+  const watchedHasEyelet   = watch('hasEyelet')
+  const watchedWidthM      = watch('widthM')
+  const watchedLengthM     = watch('lengthM')
+  const watchedGsm         = watch('gsm')
 
   // Tính tổng mét ước tính (hiển thị read-only)
   const estimatedTotal = (() => {
@@ -96,6 +100,24 @@ export default function NewOrderForm() {
       return (Number(watchedQty) * Number(watchedPieceLength)).toLocaleString()
     }
     return null
+  })()
+
+  // Tính trọng lượng ước tính (live)
+  const estimatedWeight = (() => {
+    const w = Number(watchedWidthM)
+    const l = Number(watchedLengthM)
+    const g = Number(watchedGsm)
+    if (!w || !g) return null
+    const { totalWeightKgs } = calculateOrderWeight({
+      orderType: orderType ?? 'meters',
+      widthM: w,
+      lengthM: l,
+      gsm: g,
+      qty: watchedQty ? Number(watchedQty) : null,
+      rollLength: watchedRollLength ? Number(watchedRollLength) : null,
+      pieceLength: watchedPieceLength ? Number(watchedPieceLength) : null,
+    })
+    return totalWeightKgs > 0 ? totalWeightKgs.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : null
   })()
 
   const onSubmit = async (values: CreateOrderOutput) => {
@@ -307,6 +329,15 @@ export default function NewOrderForm() {
             <Field label="Tổng mét ước tính">
               <div className="w-full bg-surface-container-low border-[0.5px] border-outline-variant rounded px-md py-[10px] font-mono text-type-mono text-on-surface tabular-nums">
                 {estimatedTotal} m
+              </div>
+            </Field>
+          )}
+
+          {/* Trọng lượng ước tính — hiện với mọi orderType khi đủ dữ liệu */}
+          {estimatedWeight && (
+            <Field label="Trọng lượng ước tính (kg)">
+              <div className="w-full bg-surface-container-low border-[0.5px] border-outline-variant rounded px-md py-[10px] font-mono text-type-mono text-on-surface tabular-nums">
+                {estimatedWeight} kg
               </div>
             </Field>
           )}

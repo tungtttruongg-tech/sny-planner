@@ -52,6 +52,8 @@ export default async function OrderDetailPage({ params }: Props) {
       uvPct: raw.uvPct != null ? raw.uvPct.toString() : null,
       rollLength:  raw.rollLength  != null ? raw.rollLength.toString()  : null,
       pieceLength: raw.pieceLength != null ? raw.pieceLength.toString() : null,
+      qtySqm:         raw.qtySqm         != null ? raw.qtySqm.toString()         : null,
+      totalWeightKgs: raw.totalWeightKgs != null ? raw.totalWeightKgs.toString() : null,
     }
   } catch (err) {
     throw err
