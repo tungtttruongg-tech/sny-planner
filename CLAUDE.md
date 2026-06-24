@@ -2,7 +2,7 @@
 > Ground truth for all AI coding agents (Antigravity, Cursor).
 > READ THIS ENTIRE FILE before generating any code.
 > If context in this file conflicts with your judgment → this file wins.
-> Last updated: 18/06/2026
+> Last updated: 24/06/2026
 
 ---
 
@@ -39,22 +39,38 @@ Flow: Sales Order → Production Order → Machine Schedule → Material Plannin
 - `src/app/orders/page.tsx` — server component, KPI cards, table
 - `src/components/orders/OrderTable.tsx` — search by PI/Customer
 
-### S2 ✅ New order form
-- `src/app/orders/new/page.tsx`
-- `src/components/orders/NewOrderForm.tsx` — react-hook-form + zod
-- `src/app/api/orders/route.ts` — POST handler
+### S2 ✅ New order form — MERGED into multi-line form (BREAKING CHANGE 24/06/2026)
+- **`src/app/orders/new/` REMOVED** — page deleted entirely
+- **`src/components/orders/NewOrderForm.tsx` DELETED** — do not recreate
+- **`src/app/orders/new-multi/page.tsx`** is now the ONLY order creation page
+- **`src/components/orders/MultiLineOrderForm.tsx`** handles 1 or many sub-lines:
+  - **Shared fields** (top card, apply to all lines): PI Number, Customer, Order Date, GSM, MB Code, Mesh Type, Needle Count, Beam Count, Description, Remark
+  - **Per-line fields** (repeatable rows, start with 1): Color, Width (m), Order Type + conditional fields (see below), UV%, FR checkbox, Eyelet checkbox + Eyelet Color
+  - **Conditional per orderType:** `meters` → Length (m) | `rolls` → Số cuộn + Mét/cuộn | `pieces` → Số tấm + Chiều dài tấm
+  - Each row auto-calculates and displays live: **Tổng mét** + **Trọng lượng ước tính (kg)**
+  - "+ Thêm dòng" button adds rows; "Xoá dòng" removes (disabled when only 1 row)
+- **`src/app/api/orders/multi-line/route.ts`** — POST handler:
+  - Prisma `$transaction` — all-or-nothing create of all sub-lines
+  - `subLineIndex` auto-assigned, continuing from highest existing index for that PI
+  - Calculates `qtySqm` + `totalWeightKgs` per line using `calculateOrderWeight()`
+  - Sets `dataSource: "manual"` on every created record
+- "New order" button on `/orders` page links to `/orders/new-multi`
+- `src/app/api/orders/route.ts` POST handler still exists but is no longer linked from UI (kept to avoid breaking anything)
 
 ### S3 ✅ Order detail
 - `src/app/orders/[id]/page.tsx`
 - `src/components/orders/OrderDetail.tsx` — VIEW + EDIT + DELETE
+  - View mode: shows `totalWeightKgs` when not null
+  - Edit mode: live `editEstimatedWeight` chip updates as fields change
 - `src/app/api/orders/[id]/route.ts` — GET/PATCH/DELETE
+  - PATCH recalculates `qtySqm` + `totalWeightKgs` if any dimension/type field changed
 
 ### S4 ✅ Mock pages
 - Replaced by real pages in M2/M3
 
 ### S5 ✅ Excel import
 - `src/app/api/orders/import/route.ts` — parse preview
-- `src/app/api/orders/import/confirm/route.ts` — full file import
+- `src/app/api/orders/import/confirm/route.ts` — full file import, sets `dataSource: "import"`
 - `src/components/orders/ImportOrdersModal.tsx`
 - `src/lib/excel/parseOrderList.ts`
 
@@ -67,7 +83,7 @@ Flow: Sales Order → Production Order → Machine Schedule → Material Plannin
 
 ### Bulk Paste ✅
 - `src/app/orders/bulk/page.tsx` — paste from Excel → preview → import
-- `src/app/api/orders/bulk/route.ts` — POST handler
+- `src/app/api/orders/bulk/route.ts` — POST handler, sets `dataSource: "import"`
 - `src/lib/excel/parsePastedText.ts` — tab-separated parser
 
 ### M2 ✅ Machine Schedule functional
@@ -81,7 +97,7 @@ Flow: Sales Order → Production Order → Machine Schedule → Material Plannin
 - `AssignFromOrderModal` pre-fills `allocatedMeters` with `order.lengthM / 2`.
 
 ### Schedule DetailModal — full order details ✅
-- Clicking an assigned cell shows: Width, Length, GSM, Color, MB Code, Qty, Mesh Type, Needle Count, Eyelet, Eyelet Color, Allocated Meters.
+- Clicking an assigned cell shows: Width, Length, GSM, Color, MB Code, Qty, Mesh Type, Needle Count, Eyelet, Eyelet Color, Allocated Meters, **Trọng lượng (kg)**.
 
 ### M3 ✅ Materials functional
 - CRUD inventory, low stock alerts, summary cards.
@@ -99,21 +115,41 @@ Flow: Sales Order → Production Order → Machine Schedule → Material Plannin
 - `src/app/api/materials/import-transactions/route.ts` — preview only, no DB write.
 - `src/app/api/materials/import-transactions/confirm/route.ts` — creates `MaterialTransaction` records, sets `currentStock = lastStock` (file is source of truth), auto-creates unmatched materials with `minThreshold = null`.
 
+### Calculated weight fields ✅
+- `qtySqm`, `totalWeightKgs` — auto-calculated on every create/update using `src/lib/calculations/orderWeight.ts`
+- **Formula (Case A):** `qtySqm = widthM × totalMeters`, `totalWeightKgs = qtySqm × gsm / 1000`
+- `totalMeters` depends on `orderType`:
+  - `"meters"` → `totalMeters = lengthM`
+  - `"rolls"`  → `totalMeters = qty × rollLength`
+  - `"pieces"` → `totalMeters = qty × pieceLength`
+- Displayed **live** in: `MultiLineOrderForm` (per row), `OrderDetail` view + edit mode, Schedule `DetailModal`
+- Set on: `POST /api/orders/multi-line`, `POST /api/orders` (legacy), `PATCH /api/orders/[id]`
+
 ### Order type variants ✅
-- `NewOrderForm` and `OrderDetail` edit mode support 3 order types with conditional fields:
+- All order forms support 3 order types with conditional fields:
   - `"meters"`: shows `lengthM` as "Tổng mét".
   - `"rolls"`: shows `qty` (cuộn) + `rollLength` (mét/cuộn), auto-calculates total.
   - `"pieces"`: shows `qty` (tấm) + `pieceLength` (chiều dài tấm), auto-calculates total.
 
 ### Eyelet tracking ✅
-- `hasEyelet` checkbox + conditional `eyeletColor` field in `NewOrderForm` and `OrderDetail` edit mode.
+- `hasEyelet` checkbox + conditional `eyeletColor` field — now **per-line** in `MultiLineOrderForm` (not shared), and per-record in `OrderDetail` edit mode.
 - Shown in Schedule `DetailModal` when `hasEyelet = true`.
 
 ### MB Code field ✅
-- `mbCode` text field after Color in order forms — for masterbatch color code tracking (e.g. MYD4501A, 7079, LS309315).
+- `mbCode` text field — for masterbatch color code tracking (e.g. MYD4501A, 7079, LS309315).
+- In `MultiLineOrderForm`: shared field (same MB for all lines); in `OrderDetail`: per-record.
+
+### dataSource field ✅ — CRITICAL, do NOT remove
+```prisma
+dataSource   String   @default("manual")
+// "manual" = KH nhập tay thật (multi-line form) → dùng cho AI training Phase 2
+// "import" = Excel import / bulk paste          → dùng cho AI training Phase 2
+// "seed"   = demo data do TESO tạo              → KHÔNG dùng cho AI training
+```
+> ⚠️ **WARNING for future agents:** `datasource db { ... }` at the top of `schema.prisma` is Prisma's DB connection config keyword — **completely unrelated** to the `dataSource` business field on `ProductionOrder`. Do NOT confuse the two. Do NOT remove `dataSource` when troubleshooting Prisma Client errors. If Prisma reports "Unknown argument `dataSource`", the fix is **`npx prisma generate`** (Prisma Client out of sync), NOT deleting the field.
 
 ### UX Polish ✅
-- Redirect to detail after order creation.
+- Redirect to `/orders` after multi-line order creation.
 - No top nav tabs.
 - Side nav: Production, Schedule, Materials active; Reports, Settings disabled with Phase 2 pill.
 - Table row hover states + empty state messages throughout.
@@ -156,7 +192,7 @@ model ProductionOrder {
   lengthM      Float    // order length in metres (or calculated total for rolls/pieces)
   gsm          Int      // grams per square metre (e.g. 165)
   color        String   // e.g. "BLACK", "WHITE"
-  mbCode       String?  // M\u00e3 Masterbatch m\u00e0u \u2014 e.g. "MYD4501A", "7079", "LS309315"
+  mbCode       String?  // Mã Masterbatch màu — e.g. "MYD4501A", "7079", "LS309315"
 
   // Optional order details
   qty          Int?                  // quantity in rolls or pieces
@@ -166,33 +202,42 @@ model ProductionOrder {
   remark       String?               // free-text internal remark
 
   // Technical specs
-  meshType     String?               // Th\u1ec3 lo\u1ea1i l\u01b0\u1edbi
-  needleCount  Int?                  // S\u1ed1 kim
-  beamCount    Int?                  // S\u1ed1 d\u00e0n
+  meshType     String?               // Thể loại lưới
+  needleCount  Int?                  // Số kim
+  beamCount    Int?                  // Số dàn
 
-  // Ki\u1ec3u \u0111\u01a1n h\u00e0ng \u2014 x\u00e1c \u0111\u1ecbnh c\u00e1ch t\u00ednh t\u1ed5ng m\u00e9t
-  orderType    String   @default("meters")
-  // "meters" = t\u1ed5ng m\u00e9t tr\u1ef1c ti\u1ebfp (lengthM)
-  // "rolls"  = qty \u00d7 rollLength
-  // "pieces" = qty \u00d7 pieceLength
+  // Kiểu đơn hàng — xác định cách tính tổng mét
+  orderType   String   @default("meters")
+  // "rolls"  = tính theo cuộn (qty × rollLength)
+  // "meters" = tính theo tổng mét (lengthM)
+  // "pieces" = gia công tấm (qty × pieceLength)
 
-  rollLength   Decimal? @db.Decimal(10, 2) // m\u00e9t/cu\u1ed9n \u2014 ch\u1ec9 d\u00f9ng khi orderType = "rolls"
-  pieceLength  Decimal? @db.Decimal(10, 2) // chi\u1ec1u d\u00e0i t\u1ea5m (m) \u2014 ch\u1ec9 d\u00f9ng khi orderType = "pieces"
+  rollLength  Decimal? @db.Decimal(10, 2)
+  // Số mét/cuộn — chỉ dùng khi orderType = "rolls"
 
-  // Eyelet \u2014 ph\u1ee5 ki\u1ec7n khoen tr\u00ean s\u1ea3n ph\u1ea9m l\u01b0\u1edbi
-  hasEyelet    Boolean  @default(false)  // C\u00f3 eyelet kh\u00f4ng
-  eyeletColor  String?                   // M\u00e0u eyelet
+  pieceLength Decimal? @db.Decimal(10, 2)
+  // Chiều dài tấm (m) — chỉ dùng khi orderType = "pieces"
+
+  // Eyelet — phụ kiện khoen trên sản phẩm lưới
+  hasEyelet    Boolean  @default(false)  // Có eyelet không
+  eyeletColor  String?                   // Màu eyelet
+
+  // Calculated weight fields (Case A formula)
+  // qtySqm = widthM × totalMeters
+  // totalWeightKgs = qtySqm × gsm / 1000
+  qtySqm         Decimal? @db.Decimal(12, 2)  // tổng diện tích m²
+  totalWeightKgs Decimal? @db.Decimal(12, 2)  // tổng trọng lượng kg
 
   // Workflow status
   status       String   @default("PENDING") // PENDING | IN_PRODUCTION | DONE | CANCELLED
 
-  // dataSource tracking for AI training data quality:
-  // "manual" = KH nh\u1eadp tay th\u1eadt \u2192 d\u00f9ng cho AI training
-  // "import" = Excel/bulk paste \u2192 d\u00f9ng cho AI training
-  // "seed" = demo data do TESO t\u1ea1o \u2192 KH\u00d4NG d\u00f9ng cho AI training
+  // dataSource tracking for AI training data quality (Phase 2):
+  // "manual" = KH nhập tay thật → dùng cho AI training
+  // "import" = Excel/bulk paste → dùng cho AI training
+  // "seed"   = demo data do TESO tạo → KHÔNG dùng cho AI training
   dataSource   String   @default("manual")
 
-  // Relations \u2014 1 \u0111\u01a1n h\u00e0ng c\u00f3 th\u1ec3 ch\u1ea1y tr\u00ean nhi\u1ec1u m\u00e1y song song
+  // Relations — một đơn hàng có thể chạy trên nhiều máy song song
   assignments  MachineAssignment[]
 
   // Timestamps
@@ -207,9 +252,9 @@ model ProductionOrder {
 
 model Material {
   id           String   @id @default(cuid())
-  name         String   // e.g. "MF", "UV 4%", "T\u00e1i ch\u1ebf", "FR", "IR"
-  currentStock Decimal  @db.Decimal(10, 2)  // kg hi\u1ec7n c\u00f3
-  minThreshold Decimal? @db.Decimal(10, 2)  // ng\u01b0\u1ee1ng t\u1ed1i thi\u1ec3u c\u1ea3nh b\u00e1o \u2014 null = ch\u01b0a \u0111\u1eb7t ng\u01b0\u1ee1ng
+  name         String   // e.g. "MF", "UV 4%", "Tái chế", "FR", "IR"
+  currentStock Decimal  @db.Decimal(10, 2)  // kg hiện có
+  minThreshold Decimal? @db.Decimal(10, 2)  // ngưỡng tối thiểu cảnh báo — null = chưa đặt ngưỡng
   unit         String   @default("kg")
   note         String?
   createdAt    DateTime @default(now())
@@ -224,11 +269,11 @@ model MachineAssignment {
   id        String   @id @default(cuid())
   machineId String   // e.g. "M-001" to "M-040"
 
-  // orderId is NOT @unique \u2014 1 order can have multiple machine assignments (parallel production)
+  // orderId is NOT @unique — 1 order can have multiple machine assignments (parallel production)
   orderId   String
   order     ProductionOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  // S\u1ed1 m\u00e9t ph\u00e2n c\u00f4ng cho m\u00e1y n\u00e0y (optional, d\u00f9ng khi chia \u0111\u01a1n)
+  // Số mét phân công cho máy này (optional, dùng khi chia đơn)
   allocatedMeters Decimal? @db.Decimal(10, 2)
 
   startDate DateTime
@@ -247,17 +292,17 @@ model MaterialTransaction {
   material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
   // txType valid values:
-  // "in"         = nh\u1eadp kho
-  // "out_using"  = xu\u1ea5t s\u1eed d\u1ee5ng s\u1ea3n xu\u1ea5t
-  // "out_broken" = xu\u1ea5t h\u1ecfng (HDPE BROKEN)
-  // "out_tape"   = xu\u1ea5t l\u00e0m b\u0103ng keo (OUT TAPE)
-  // "out_reject" = xu\u1ea5t reject
+  // "in"         = nhập kho
+  // "out_using"  = xuất sử dụng sản xuất
+  // "out_broken" = xuất hỏng (HDPE BROKEN)
+  // "out_tape"   = xuất làm băng keo (OUT TAPE)
+  // "out_reject" = xuất reject
   txType     String
 
-  quantityKg Decimal  @db.Decimal(10, 2)   // s\u1ed1 kg
-  txDate     DateTime                       // ng\u00e0y giao d\u1ecbch
-  mbPct      Decimal? @db.Decimal(5, 2)    // % MB tr\u00ean 1 t\u1ea5n nh\u1ef1a (ch\u1ec9 d\u00f9ng cho lo\u1ea1i MB)
-  orderId    String?                        // link \u0111\u01a1n h\u00e0ng n\u1ebfu c\u00f3 (optional)
+  quantityKg Decimal  @db.Decimal(10, 2)   // số kg
+  txDate     DateTime                       // ngày giao dịch
+  mbPct      Decimal? @db.Decimal(5, 2)    // % MB trên 1 tấn nhựa (chỉ dùng cho loại MB)
+  orderId    String?                        // link đơn hàng nếu có (optional)
   note       String?
 
   createdAt  DateTime @default(now())
@@ -317,23 +362,28 @@ sny-planner/
 ├── prisma/schema.prisma
 ├── src/
 │   ├── app/
-│   │   ├── orders/          ← list, new, [id], bulk
+│   │   ├── orders/          ← list, new-multi, [id], bulk
+│   │   │   ├── page.tsx               ← order list + KPI cards
+│   │   │   ├── new-multi/page.tsx     ← ONLY order creation page (replaces /new)
+│   │   │   ├── [id]/page.tsx          ← order detail
+│   │   │   └── bulk/page.tsx          ← bulk paste import
 │   │   ├── schedule/        ← M2 functional
 │   │   ├── materials/       ← M3 functional
 │   │   └── api/
-│   │       ├── orders/      ← CRUD + import + bulk
+│   │       ├── orders/      ← route.ts (GET+POST legacy), [id]/, bulk/, import/, multi-line/
 │   │       ├── materials/   ← CRUD + [id]/transactions/ + import-transactions/
 │   │       └── assignments/ ← schedule CRUD
 │   ├── components/
 │   │   ├── layout/          ← TopNav.tsx, SideNav.tsx
-│   │   ├── orders/          ← OrderTable, NewOrderForm, OrderDetail, ImportOrdersModal
+│   │   ├── orders/          ← OrderTable, MultiLineOrderForm, OrderDetail, ImportOrdersModal
 │   │   ├── materials/       ← MaterialsTable, AddMaterialModal, EditMaterialModal,
 │   │   │                       AddTransactionModal, TransactionHistoryModal,
 │   │   │                       ImportMaterialReportModal
 │   │   └── schedule/        ← AssignModal.tsx, DetailModal.tsx, AssignFromOrderModal.tsx
 │   ├── lib/
 │   │   ├── db.ts
-│   │   ├── validations/order.ts
+│   │   ├── calculations/orderWeight.ts  ← calculateOrderWeight() helper (server + client safe)
+│   │   ├── validations/order.ts         ← createOrderSchema, updateOrderSchema, multiLineOrderSchema
 │   │   └── excel/           ← parseOrderList.ts, parsePastedText.ts, parseMaterialReport.ts
 │   └── types/index.ts       ← SerializedProductionOrder, ParsedOrder
 ```
@@ -360,6 +410,9 @@ sny-planner/
 | MB Code + Eyelet fields | ✅ Done |
 | Material Transaction system | ✅ Done |
 | Material Excel Import | ✅ Done |
+| Calculated weight (qtySqm + totalWeightKgs) | ✅ Done |
+| Multi-line order form (merged, replaces /orders/new) | ✅ Done |
+| dataSource field restored | ✅ Done |
 
 ## 9. Next sprints
 
