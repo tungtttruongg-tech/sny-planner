@@ -35,6 +35,7 @@ export default function AssignFromOrderModal({ order, onAssigned, onClose }: Pro
     // Mặc định chia đôi chiều dài đơn hàng
     String(Math.round(order.lengthM / 2))
   )
+  const [estimatedDailyOutput, setEstimatedDailyOutput] = useState('')
   const [error, setError]                 = useState('')
   const [isLoading, setIsLoading]         = useState(false)
   const [isSuccess, setIsSuccess]         = useState(false)
@@ -63,6 +64,8 @@ export default function AssignFromOrderModal({ order, onAssigned, onClose }: Pro
           endDate:   toVietnamISO(endDate),
           // Gửi số mét phân công nếu có nhập
           ...(allocatedMeters !== '' && { allocatedMeters: Number(allocatedMeters) }),
+          // Gửi sản lượng dự kiến nếu có nhập
+          ...(estimatedDailyOutput !== '' && { estimatedDailyOutput: Number(estimatedDailyOutput) }),
         }),
       })
 
@@ -201,6 +204,23 @@ export default function AssignFromOrderModal({ order, onAssigned, onClose }: Pro
                 className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary outline-none font-mono"
               />
               <p className="text-label-sm text-outline mt-xs">Mặc định chia đôi. Điều chỉnh nếu cần.</p>
+            </div>
+
+            {/* Sản lượng dự kiến */}
+            <div>
+              <label className="block text-label-sm font-medium text-secondary mb-xs">
+                Sản lượng dự kiến (m/ngày)
+              </label>
+              <input
+                id="assign-from-order-estimatedDailyOutput"
+                type="number"
+                min={1}
+                step={1}
+                value={estimatedDailyOutput}
+                onChange={e => setEstimatedDailyOutput(e.target.value)}
+                placeholder="e.g. 800"
+                className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary outline-none font-mono"
+              />
             </div>
 
             {/* Actions */}

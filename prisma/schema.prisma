@@ -112,6 +112,10 @@ model MachineAssignment {
 
   // Số mét phân công cho máy này (optional, dùng khi chia đơn)
   allocatedMeters Decimal? @db.Decimal(10, 2)
+
+  // Sản lượng dự kiến (m/ngày) — planner nhập tay khi assign
+  // Dùng cho công thức ngày hoàn thành ở Phase 2 (không tính trong sprint này)
+  estimatedDailyOutput Decimal? @db.Decimal(10, 2)
   
   startDate DateTime
   endDate   DateTime

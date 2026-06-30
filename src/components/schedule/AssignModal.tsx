@@ -19,6 +19,7 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
   const [selectedOrderId, setSelectedOrderId] = useState('')
   const [endDate, setEndDate] = useState('')
   const [allocatedMeters, setAllocatedMeters] = useState('')
+  const [estimatedDailyOutput, setEstimatedDailyOutput] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -30,6 +31,7 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
       }
       setSelectedOrderId('')
       setAllocatedMeters('')
+      setEstimatedDailyOutput('')
       setError('')
     }
   }, [isOpen, startDate])
@@ -71,6 +73,8 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
           endDate: endISO,
           // Gửi số mét phân công nếu planner có nhập
           ...(allocatedMeters !== '' && { allocatedMeters: Number(allocatedMeters) }),
+          // Gửi sản lượng dự kiến nếu planner có nhập
+          ...(estimatedDailyOutput !== '' && { estimatedDailyOutput: Number(estimatedDailyOutput) }),
         })
       })
 
@@ -159,6 +163,23 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
                 value={allocatedMeters}
                 onChange={e => setAllocatedMeters(e.target.value)}
                 placeholder="e.g. 6000"
+                className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary outline-none font-mono"
+              />
+            </div>
+
+            {/* Sản lượng dự kiến */}
+            <div>
+              <label className="block text-label-sm font-medium text-secondary mb-xs">
+                Sản lượng dự kiến (m/ngày)
+              </label>
+              <input
+                id="assign-estimatedDailyOutput"
+                type="number"
+                min={1}
+                step={1}
+                value={estimatedDailyOutput}
+                onChange={e => setEstimatedDailyOutput(e.target.value)}
+                placeholder="e.g. 800"
                 className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary outline-none font-mono"
               />
             </div>

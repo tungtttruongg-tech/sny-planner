@@ -275,6 +275,13 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
               mono
             />
           )}
+          {currentOrder.qtySqm != null && (
+            <ViewField
+              label="Diện tích (m²)"
+              value={parseFloat(currentOrder.qtySqm).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}
+              mono
+            />
+          )}
           <ViewField label="Mã màu (MB Code)" value={currentOrder.mbCode ?? null}               mono />
           <ViewField label="Kiểu đơn" value={
             currentOrder.orderType === 'rolls'  ? 'Theo cuộn' :
@@ -348,6 +355,11 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
               <span className="inline-flex items-center px-sm py-xs rounded text-label-sm font-inter font-medium bg-surface-container text-on-surface-variant">
                 {currentOrder.status}
               </span>
+            } />
+            <ViewField label="Nguồn dữ liệu" value={
+              currentOrder.dataSource === 'import' ? 'Excel/bulk import' :
+              currentOrder.dataSource === 'seed'   ? 'Demo data' :
+              'Nhập tay'
             } />
             <ViewField label="Created"      value={formatDateTime(currentOrder.createdAt)}        />
             <ViewField label="Last Updated" value={formatDateTime(currentOrder.updatedAt)}        />

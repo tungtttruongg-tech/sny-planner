@@ -35,7 +35,7 @@ export async function PATCH(
     if (!id) return NextResponse.json({ message: "ID is required" }, { status: 400 });
 
     const body = await request.json();
-    const { orderId, endDate } = body;
+    const { orderId, endDate, estimatedDailyOutput } = body;
 
     const existing = await prisma.machineAssignment.findUnique({
       where: { id },
@@ -77,6 +77,10 @@ export async function PATCH(
       data: {
         orderId,
         endDate: end,
+        // Cập nhật sản lượng dự kiến nếu client gửi lên (undefined = giữ nguyên)
+        ...(estimatedDailyOutput !== undefined && {
+          estimatedDailyOutput: estimatedDailyOutput === null ? null : estimatedDailyOutput,
+        }),
       },
       include: { order: true },
     });

@@ -95,6 +95,14 @@ export default async function OrdersPage() {
             Bulk paste
           </Link>
           <Link
+            id="btn-po-summary"
+            href="/orders/summary"
+            className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">table_chart</span>
+            PO Summary
+          </Link>
+          <Link
             id="btn-new-order"
             href="/orders/new-multi"
             className="inline-flex items-center justify-center gap-sm bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 transition-colors"

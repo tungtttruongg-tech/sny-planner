@@ -10,6 +10,7 @@ export type AssignmentDetail = {
   startDate: string
   endDate: string
   allocatedMeters: string | null  // Decimal serialised as string by Prisma
+  estimatedDailyOutput: string | null  // Decimal serialised as string by Prisma
   order: {
     id: string
     piNumber: string
@@ -299,6 +300,14 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
                     <dt className="text-label-sm font-inter text-secondary">Số mét phân công</dt>
                     <dd className="text-body-md font-mono text-on-surface">
                       {Number(assignment.allocatedMeters).toLocaleString()} m
+                    </dd>
+                  </div>
+                )}
+                {assignment.estimatedDailyOutput && (
+                  <div className="col-span-2">
+                    <dt className="text-label-sm font-inter text-secondary">Sản lượng dự kiến</dt>
+                    <dd className="text-body-md font-mono text-on-surface">
+                      {Number(assignment.estimatedDailyOutput).toLocaleString('vi-VN')} m/ngày
                     </dd>
                   </div>
                 )}

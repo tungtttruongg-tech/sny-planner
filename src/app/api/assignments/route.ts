@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { machineId, orderId, startDate, endDate, allocatedMeters } = result.data;
+    const { machineId, orderId, startDate, endDate, allocatedMeters, estimatedDailyOutput } = result.data;
     const start = new Date(startDate);
     const end = new Date(endDate);
 
@@ -119,6 +119,7 @@ export async function POST(request: Request) {
         startDate: start,
         endDate: end,
         ...(allocatedMeters != null && { allocatedMeters }),
+        ...(estimatedDailyOutput != null && { estimatedDailyOutput }),
       },
       include: {
         order: true,
