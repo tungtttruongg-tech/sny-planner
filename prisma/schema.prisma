@@ -153,3 +153,25 @@ model MaterialTransaction {
   @@index([txDate])
   @@map("material_transactions")
 }
+
+model KnittingDailyOutput {
+  id               String   @id @default(cuid())
+  machineId        String   // "M-001" to "M-040"
+  reportDate       DateTime // exact date of the report (time = 00:00:00 UTC)
+
+  // dailyMeters = delta from previous day's cumulative — NOT the cumulative itself.
+  // If no previous-day record exists (first import of the month), dailyMeters = cumulativeMeters.
+  // If delta is negative (idle / data anomaly) → stored as 0.
+  dailyMeters      Decimal  @db.Decimal(10, 2)
+
+  // Raw cumulative total(m) from file — kept for audit and future re-calculation.
+  cumulativeMeters Decimal  @db.Decimal(10, 2)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([machineId, reportDate])
+  @@index([machineId])
+  @@index([reportDate])
+  @@map("knitting_daily_output")
+}

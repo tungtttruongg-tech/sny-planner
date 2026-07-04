@@ -10,6 +10,7 @@ import EditMaterialModal, { type SerializedMaterial } from '@/components/materia
 import MaterialsTable from '@/components/materials/MaterialsTable'
 import TransactionHistoryModal from '@/components/materials/TransactionHistoryModal'
 import ImportMaterialReportModal from '@/components/materials/ImportMaterialReportModal'
+import ImportKnittingModal from '@/components/materials/ImportKnittingModal'
 
 // Note: metadata export is not supported in 'use client' components.
 // Page title is set via the <title> in the HTML head from layout.tsx.
@@ -86,8 +87,9 @@ export default function MaterialsPage() {
   const [isLoading, setIsLoading]     = useState(true)
   const [fetchError, setFetchError]   = useState<string | null>(null)
   const [showAddModal, setShowAddModal]       = useState(false)
-  const [showImportModal, setShowImportModal] = useState(false)
-  const [editTarget, setEditTarget]           = useState<SerializedMaterial | null>(null)
+  const [showImportModal, setShowImportModal]           = useState(false)
+  const [showKnittingModal, setShowKnittingModal]       = useState(false)
+  const [editTarget, setEditTarget]                     = useState<SerializedMaterial | null>(null)
   const [deleteTarget, setDeleteTarget]       = useState<SerializedMaterial | null>(null)
   const [historyTarget, setHistoryTarget]     = useState<SerializedMaterial | null>(null)
   const [isDeleting, setIsDeleting]           = useState(false)
@@ -158,6 +160,14 @@ export default function MaterialsPage() {
           >
             <span className="material-symbols-outlined text-[18px]">upload_file</span>
             Import báo cáo
+          </button>
+          <button
+            id="btn-import-knitting-report"
+            onClick={() => setShowKnittingModal(true)}
+            className="inline-flex items-center justify-center gap-2 border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">table_chart</span>
+            Import Knitting
           </button>
           <button
             id="btn-add-material"
@@ -233,6 +243,14 @@ export default function MaterialsPage() {
         <ImportMaterialReportModal
           onImported={fetchMaterials}
           onClose={() => { setShowImportModal(false); fetchMaterials() }}
+        />
+      )}
+
+      {/* Import Knitting Report modal */}
+      {showKnittingModal && (
+        <ImportKnittingModal
+          onImported={() => {}}
+          onClose={() => setShowKnittingModal(false)}
         />
       )}
 

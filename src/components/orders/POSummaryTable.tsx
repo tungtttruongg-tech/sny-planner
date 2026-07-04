@@ -5,7 +5,7 @@
 // Collapsed by default; each group expands to show per-sub-line details.
 // Searchable by PI Number or Customer (case-insensitive).
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import type { SerializedProductionOrder } from '@/types'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -75,9 +75,22 @@ function orderTypeLabel(t: string) {
   return 'Mét'
 }
 
+// Tiến độ sản xuất per order (lazy-loaded khi expand)
+interface ProgressEntry {
+  producedMeters: number
+  remainingMeters: number
+}
+type ProgressMap = Record<string, ProgressEntry> // key = orderId
+
 // ── Sub-line detail table ──────────────────────────────────────────────────────
 
-function SubLineTable({ subLines }: { subLines: SerializedProductionOrder[] }) {
+function SubLineTable({
+  subLines,
+  progress,
+}: {
+  subLines: SerializedProductionOrder[]
+  progress: ProgressMap
+}) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs font-inter border-collapse">
@@ -100,6 +113,8 @@ function SubLineTable({ subLines }: { subLines: SerializedProductionOrder[] }) {
             <th className="px-3 py-2 text-right font-medium">Dàn</th>
             <th className="px-3 py-2 text-center font-medium">Eyelet</th>
             <th className="px-3 py-2 text-left font-medium">Màu eyelet</th>
+            <th className="px-3 py-2 text-left font-medium">Đã SX (m)</th>
+            <th className="px-3 py-2 text-right font-medium">Còn lại (m)</th>
             <th className="px-3 py-2 text-left font-medium">Nguồn</th>
           </tr>
         </thead>
@@ -150,6 +165,22 @@ function SubLineTable({ subLines }: { subLines: SerializedProductionOrder[] }) {
                 )}
               </td>
               <td className="px-3 py-2 text-secondary">{s.eyeletColor ?? '—'}</td>
+              <td className="px-3 py-2 font-mono text-primary font-semibold">
+                {progress[s.id] != null
+                  ? `${progress[s.id].producedMeters.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} m`
+                  : <span className="text-outline text-[10px]">...</span>}
+              </td>
+              <td className="px-3 py-2 font-mono text-right">
+                {progress[s.id] != null
+                  ? (
+                    <span className={progress[s.id].remainingMeters === 0 ? 'text-[#15803d] font-semibold' : 'text-on-surface'}>
+                      {progress[s.id].remainingMeters === 0
+                        ? '✔'
+                        : `${progress[s.id].remainingMeters.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} m`}
+                    </span>
+                  )
+                  : <span className="text-outline text-[10px]">...</span>}
+              </td>
               <td className="px-3 py-2 text-secondary">
                 {s.dataSource === 'import' ? 'Import' : s.dataSource === 'seed' ? 'Demo' : 'Manual'}
               </td>
@@ -164,10 +195,47 @@ function SubLineTable({ subLines }: { subLines: SerializedProductionOrder[] }) {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function POSummaryTable({ orders }: Props) {
-  const [search, setSearch] = useState('')
-  const [expandedPIs, setExpandedPIs] = useState<Set<string>>(new Set())
+  const [search, setSearch]             = useState('')
+  const [expandedPIs, setExpandedPIs]   = useState<Set<string>>(new Set())
+  // progress: keyed by orderId — lazy-loaded when a PI group is expanded
+  const [progress, setProgress]         = useState<ProgressMap>({})
 
   const groups = useMemo(() => groupOrders(orders), [orders])
+
+  // Fetch progress for all sub-lines in a PI group (lazy — only on expand)
+  const fetchProgressForGroup = useCallback(async (subLines: SerializedProductionOrder[]) => {
+    // Only fetch for orders not already in state
+    const missing = subLines.filter((s) => progress[s.id] === undefined)
+    if (missing.length === 0) return
+
+    const results = await Promise.all(
+      missing.map(async (s) => {
+        try {
+          const res = await fetch(`/api/knitting/progress/${s.id}`)
+          if (!res.ok) return { id: s.id, data: null }
+          const json = await res.json() as { success: boolean; producedMeters?: number; remainingMeters?: number }
+          if (!json.success) return { id: s.id, data: null }
+          return {
+            id: s.id,
+            data: {
+              producedMeters: json.producedMeters ?? 0,
+              remainingMeters: json.remainingMeters ?? 0,
+            },
+          }
+        } catch {
+          return { id: s.id, data: null }
+        }
+      })
+    )
+
+    setProgress((prev) => {
+      const next = { ...prev }
+      for (const r of results) {
+        if (r.data) next[r.id] = r.data
+      }
+      return next
+    })
+  }, [progress])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -179,11 +247,16 @@ export default function POSummaryTable({ orders }: Props) {
     )
   }, [groups, search])
 
-  const togglePI = (piNumber: string) => {
+  function togglePI(piNumber: string, subLines: SerializedProductionOrder[]) {
     setExpandedPIs((prev) => {
       const next = new Set(prev)
-      if (next.has(piNumber)) next.delete(piNumber)
-      else next.add(piNumber)
+      if (next.has(piNumber)) {
+        next.delete(piNumber)
+      } else {
+        next.add(piNumber)
+        // Lazy-load progress for this PI's sub-lines
+        fetchProgressForGroup(subLines)
+      }
       return next
     })
   }
@@ -228,7 +301,7 @@ export default function POSummaryTable({ orders }: Props) {
                 {/* Group header — click to expand/collapse */}
                 <button
                   type="button"
-                  onClick={() => togglePI(group.piNumber)}
+                  onClick={() => togglePI(group.piNumber, group.subLines)}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container-low transition-colors text-left"
                 >
                   {/* Chevron */}
@@ -289,7 +362,7 @@ export default function POSummaryTable({ orders }: Props) {
                 {/* Expanded sub-lines */}
                 {isOpen && (
                   <div className="border-t-[0.5px] border-outline-variant">
-                    <SubLineTable subLines={group.subLines} />
+                    <SubLineTable subLines={group.subLines} progress={progress} />
                   </div>
                 )}
               </div>

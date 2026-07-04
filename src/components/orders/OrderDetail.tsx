@@ -104,7 +104,28 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
     } catch { /* silent */ }
   }, [currentOrder.id])
 
+  // Sản lượng đã xuất / còn lại từ KnittingDailyOutput
+  interface ProgressData {
+    producedMeters: number
+    remainingMeters: number
+    avgDailyOutput: number | null
+    remainingDays: number | null
+    hasData: boolean
+  }
+  const [progress, setProgress] = useState<ProgressData | null>(null)
+
+  const fetchProgress = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/knitting/progress/${currentOrder.id}`)
+      if (res.ok) {
+        const data = await res.json() as ProgressData & { success: boolean }
+        if (data.success) setProgress(data)
+      }
+    } catch { /* silent */ }
+  }, [currentOrder.id])
+
   useEffect(() => { fetchMachineRows() }, [fetchMachineRows])
+  useEffect(() => { fetchProgress() }, [fetchProgress])
 
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } =
     useForm<UpdateOrderInput, unknown, UpdateOrderOutput>({
@@ -258,7 +279,70 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           </div>
         )}
 
-        {/* Core fields */}
+        {/* Tiến độ sản xuất — chỉ hiện khi có machine assignment */}
+        {machineRows.length > 0 && progress && (
+          <div className="border border-outline-variant rounded-xl p-md bg-surface-container-low">
+            <p className="text-label-sm font-inter font-semibold text-secondary uppercase tracking-widest mb-sm">
+              Tiến độ sản xuất
+            </p>
+            {!progress.hasData ? (
+              <p className="text-body-sm font-inter text-outline">
+                Chưa có dữ liệu sản lượng — upload Knitting Report để xem tiến độ.
+              </p>
+            ) : (
+              <dl className="grid grid-cols-2 sm:grid-cols-4 gap-y-md gap-x-xl">
+                <div className="flex flex-col gap-xs">
+                  <dt className="text-label-sm font-inter font-medium text-secondary uppercase tracking-wider">
+                    Đã sản xuất
+                  </dt>
+                  <dd className="text-body-md font-mono font-semibold text-primary">
+                    {progress.producedMeters.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} m
+                  </dd>
+                </div>
+                <div className="flex flex-col gap-xs">
+                  <dt className="text-label-sm font-inter font-medium text-secondary uppercase tracking-wider">
+                    Còn lại
+                  </dt>
+                  <dd className={`text-body-md font-mono font-semibold ${
+                    progress.remainingMeters === 0 ? 'text-[#15803d]' : 'text-on-surface'
+                  }`}>
+                    {progress.remainingMeters === 0
+                      ? '✔ Hoàn thành'
+                      : `${progress.remainingMeters.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} m`
+                    }
+                  </dd>
+                </div>
+                <div className="flex flex-col gap-xs">
+                  <dt className="text-label-sm font-inter font-medium text-secondary uppercase tracking-wider">
+                    TB 7 ngày
+                  </dt>
+                  <dd className="text-body-md font-mono text-on-surface">
+                    {progress.avgDailyOutput != null
+                      ? `${progress.avgDailyOutput.toLocaleString('vi-VN')} m/ngày`
+                      : <span className="text-outline">—</span>
+                    }
+                  </dd>
+                </div>
+                <div className="flex flex-col gap-xs">
+                  <dt className="text-label-sm font-inter font-medium text-secondary uppercase tracking-wider">
+                    Ngày dự kiến xong
+                  </dt>
+                  <dd className="text-body-md font-mono text-on-surface">
+                    {progress.remainingDays != null
+                      ? (
+                        <span className={progress.remainingDays <= 3 ? 'text-error font-semibold' : ''}>
+                          ~{progress.remainingDays} ngày nữa
+                        </span>
+                      )
+                      : <span className="text-outline">—</span>
+                    }
+                  </dd>
+                </div>
+              </dl>
+            )}
+          </div>
+        )}
+
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-y-lg gap-x-xl">
           <ViewField label="PI Number"    value={currentOrder.piNumber}                         mono />
           <ViewField label="Sub-line"     value={currentOrder.subLineIndex}                     />
