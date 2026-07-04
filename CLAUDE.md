@@ -2,7 +2,7 @@
 > Ground truth for all AI coding agents (Antigravity, Cursor).
 > READ THIS ENTIRE FILE before generating any code.
 > If context in this file conflicts with your judgment → this file wins.
-> Last updated: 24/06/2026
+> Last updated: 04/07/2026
 
 ---
 
@@ -23,7 +23,8 @@ Replace 4 disconnected Excel files with 1 system.
 Flow: Sales Order → Production Order → Machine Schedule → Material Planning.
 
 **Phase 1 (DONE):** Endusers enter data into tool. Stop using Excel.
-**Current focus:** Material transaction tracking + Excel import. Next = Auth (NextAuth.js v5) + Work Order formulas.
+**Last sprint DONE:** PO Summary + estimatedDailyOutput — Loan xem được tất cả sub-line theo PI Number; Dung nhập sản lượng dự kiến khi assign.
+**Current sprint PENDING:** Xác định scope "lượng đã sản xuất / còn phải sản xuất" — đang chờ Dung/Loan trả lời 4 câu hỏi (ai nhập, tần suất, nguồn hiện tại, theo đơn hay theo máy). CHƯA BUILD.
 **Phase 2 (later):** AI automation, auto-scheduling, formula calculations, alerts.
 
 ---
@@ -124,6 +125,14 @@ Flow: Sales Order → Production Order → Machine Schedule → Material Plannin
   - `"pieces"` → `totalMeters = qty × pieceLength`
 - Displayed **live** in: `MultiLineOrderForm` (per row), `OrderDetail` view + edit mode, Schedule `DetailModal`
 - Set on: `POST /api/orders/multi-line`, `POST /api/orders` (legacy), `PATCH /api/orders/[id]`
+- **Backfill:** `scripts/backfill-qtysqm.ts` — đã chạy 1 lần (30/06/2026), cập nhật qtySqm + totalWeightKgs cho 113 đơn lịch sử nhập trước khi tính năng tồn tại. Giữ lại trong repo làm audit trail. **KHÔNG chạy lại** trừ khi phát hiện thêm đơn thiếu qtySqm tương tự.
+
+### PO Summary + Output Input ✅
+- `src/app/orders/summary/page.tsx` — server component, group orders theo piNumber
+- `src/components/orders/POSummaryTable.tsx` — client component: expand/collapse per PI, search PI/Customer, cảnh báo ⚠ (icon + native `title` tooltip) khi 1 piNumber có ≥2 customer khác nhau. **KHÔNG gộp tên customer trong header** — chỉ hiện `customers[0]` + icon cảnh báo.
+- `MachineAssignment.estimatedDailyOutput` (Decimal?, nullable) — planner nhập tay khi assign PO vào máy qua `AssignModal.tsx` / `AssignFromOrderModal.tsx`. Hiển thị trong `DetailModal.tsx`. **Input only — KHÔNG có logic tính toán tự động từ field này.**
+- `OrderDetail.tsx` view mode: bổ sung hiển thị `qtySqm` ("Diện tích (m²)") + `dataSource` ("Nguồn dữ liệu") — tất cả field trong DB đã được surface đầy đủ.
+- "PO Summary" button thêm vào `/orders` page header (outline style, giữa Bulk paste và New order).
 
 ### Order type variants ✅
 - All order forms support 3 order types with conditional fields:
@@ -276,6 +285,10 @@ model MachineAssignment {
   // Số mét phân công cho máy này (optional, dùng khi chia đơn)
   allocatedMeters Decimal? @db.Decimal(10, 2)
 
+  // Sản lượng dự kiến (m/ngày) — planner nhập tay khi assign
+  // Dùng cho công thức ngày hoàn thành ở Phase 2 (không tính trong sprint này)
+  estimatedDailyOutput Decimal? @db.Decimal(10, 2)
+
   startDate DateTime
   endDate   DateTime
 
@@ -413,13 +426,19 @@ sny-planner/
 | Calculated weight (qtySqm + totalWeightKgs) | ✅ Done |
 | Multi-line order form (merged, replaces /orders/new) | ✅ Done |
 | dataSource field restored | ✅ Done |
+| PO Summary + Output Input | ✅ Done |
 
-## 9. Next sprints
+## 9. Đang chờ feedback từ Dung/Loan — CHƯA BUILD
+
+1. **Production output tracking** ("lượng đã sản xuất / còn phải sản xuất") — đã gửi 4 câu hỏi cho Dung/Loan qua Zalo (ai nhập, tần suất, nguồn hiện tại, theo đơn hay theo máy). CHƯA có câu trả lời. KHÔNG build trước khi có câu trả lời.
+2. **Work Order Case B/C/D** (yarnPerBeam, meterPerBeam, kgPerBeam) — công thức đã confirm, nhưng input fields (lossFactor, needles, looms, beamCount, denier) chưa rõ: planner nhập tay hay tách từ field khác. Chưa hỏi Dung.
+3. **Extruder tracking scope** — Dung xác nhận muốn nhập nhưng chưa trả lời 3 câu: số máy Extruder, theo máy hay theo loại sợi, có link trực tiếp đơn hàng không.
+4. **"Số mét tổng" trên PO Summary** — hiện chỉ có M² (TỔNG) và KG (TỔNG), chưa có cột tổng số MÉT riêng. Cần hỏi Loan có cần thiết không trước khi thêm.
+
+## 9b. Next sprints (confirmed scope)
 
 | Sprint | Task | Status |
 |---|---|---|
-| Extruder tracking | Theo dõi sản lượng máy kéo sợi theo ngày | ⏳ Chờ Dung confirm scope |
-| Work Order formula | Tính số ngày hoàn thành dựa trên sản lượng/ngày | ⏳ Chờ Dung confirm công thức |
 | Auth | NextAuth.js v5 — 3 roles: Admin/Planner/Viewer | ⏳ Next |
 | Phase 2 AI | AI-1 gợi ý lịch, AI-2 cảnh báo NVL, AI-3 chat tiếng Việt | ⏳ Phase 2 |
 
@@ -433,6 +452,11 @@ sny-planner/
 - ❌ Real-time / websockets
 - ❌ Mobile responsive (desktop-first)
 - ❌ Multi-tenancy
+- ❌ Pricing fields (U/Price, Amount, Total Amount) — không có trong schema
+- ❌ "Mark" field (e.g. T100 labeling) — không có trong schema
+- ❌ Production output tracking — chờ feedback Dung/Loan, xem mục 9
+- ❌ Auto days-to-complete từ estimatedDailyOutput — Phase 2
+- ❌ Net/Gross weight (packing-stage data)
 
 ---
 
