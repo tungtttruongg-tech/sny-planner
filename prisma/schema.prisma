@@ -58,6 +58,8 @@ model ProductionOrder {
   // Eyelet — phụ kiện khoen trên sản phẩm lưới
   hasEyelet    Boolean  @default(false)  // Có eyelet không
   eyeletColor  String?                   // Màu eyelet
+  eyeletLines  Int?     // số lines eyelet: 2, 3, 4, 6... (per-line spec, bổ sung cho hasEyelet)
+  eyeletSpec   String?  // mô tả: "5cm interval", "4-5cm middle", "single band both edges"
 
   // Calculated weight fields (Case A formula)
   // qtySqm = widthM × totalMeters
