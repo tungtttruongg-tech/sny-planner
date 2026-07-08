@@ -106,7 +106,9 @@ export async function PATCH(
   if ('pieceLength' in data) updateData.pieceLength = data.pieceLength
   // Eyelet
   if (data.hasEyelet !== undefined) updateData.hasEyelet = data.hasEyelet
-  if ('eyeletColor' in data) updateData.eyeletColor = data.eyeletColor
+  if ('eyeletColor' in data)  updateData.eyeletColor  = data.eyeletColor
+  if ('eyeletLines' in data)  updateData.eyeletLines  = data.eyeletLines
+  if ('eyeletSpec' in data)   updateData.eyeletSpec   = data.eyeletSpec
 
   // 4. Recalculate weight if any relevant field changed
   const weightFields = ['widthM', 'lengthM', 'gsm', 'qty', 'rollLength', 'pieceLength', 'orderType']
