@@ -2,6 +2,11 @@
 // POST /api/orders/multi-line
 // Creates multiple sub-lines under the same PI Number in a single Prisma transaction.
 // Sub-line indices are auto-assigned, continuing from the highest existing index for that PI.
+//
+// After per-line migration:
+// - gsm, meshType, needleCount, beamCount come from each LINE (not top-level)
+// - eyeletLines, eyeletSpec added per-line
+// - mbCode, description, remark remain shared (top-level)
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
@@ -32,12 +37,14 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const data = parsed.data
+  // ── 3. Destructure shared fields ──────────────────────────────────────────
+  // gsm / meshType / needleCount / beamCount intentionally NOT here — they are per-line
+  const { piNumber, customer, orderDate, mbCode, description, remark, lines } = parsed.data
 
-  // ── 3. Derive effective lengthM for each line ──────────────────────────────
+  // ── 4. Derive effective lengthM for each line ──────────────────────────────
   // For "rolls" and "pieces", lengthM = calculated totalMeters so the field is
   // populated for display and downstream formulas.
-  function effectiveLengthM(line: typeof data.lines[number]): number {
+  function effectiveLengthM(line: typeof lines[number]): number {
     if (line.orderType === 'rolls' && line.qty && line.rollLength) {
       return line.qty * line.rollLength
     }
@@ -47,10 +54,10 @@ export async function POST(req: NextRequest) {
     return line.lengthM ?? 0
   }
 
-  // ── 4. Check existing sub-lines for this PI to avoid index collision ────────
+  // ── 5. Check existing sub-lines for this PI to avoid index collision ────────
   try {
     const existing = await prisma.productionOrder.findMany({
-      where: { piNumber: data.piNumber },
+      where: { piNumber },
       select: { subLineIndex: true },
       orderBy: { subLineIndex: 'asc' },
     })
@@ -60,25 +67,25 @@ export async function POST(req: NextRequest) {
       ? Math.max(...existing.map((e) => e.subLineIndex)) + 1
       : 0
 
-    // ── 5. Build create-many payload ──────────────────────────────────────────
-    const createPayload = data.lines.map((line, i) => {
+    // ── 6. Build create-many payload ──────────────────────────────────────────
+    const createPayload = lines.map((line, i) => {
       const lm = effectiveLengthM(line)
       const { qtySqm, totalWeightKgs } = calculateOrderWeight({
-        orderType: line.orderType,
-        widthM: line.widthM,
-        lengthM: lm,
-        gsm: data.gsm,
-        qty: line.qty ?? null,
+        orderType:  line.orderType,
+        widthM:     line.widthM,
+        lengthM:    lm,
+        gsm:        line.gsm,          // per-line (migrated from shared)
+        qty:        line.qty ?? null,
         rollLength: line.rollLength ?? null,
         pieceLength: line.pieceLength ?? null,
       })
 
       return {
-        piNumber:    data.piNumber,
+        piNumber,
         subLineIndex: nextIndex + i,
-        customer:    data.customer,
-        orderDate:   new Date(data.orderDate),
-        gsm:         data.gsm,
+        customer,
+        orderDate:   new Date(orderDate),
+        gsm:         line.gsm,         // per-line
         color:       line.color,
         widthM:      line.widthM,
         lengthM:     lm,
@@ -87,19 +94,23 @@ export async function POST(req: NextRequest) {
         ...(line.qty        != null && { qty:        line.qty }),
         ...(line.rollLength  != null && { rollLength:  line.rollLength }),
         ...(line.pieceLength != null && { pieceLength: line.pieceLength }),
+        // Per-line tech specs (migrated from shared)
+        ...(line.meshType    && { meshType:    line.meshType }),
+        ...(line.needleCount != null && { needleCount: line.needleCount }),
+        ...(line.beamCount   != null && { beamCount:   line.beamCount }),
+        // New eyelet spec fields
+        ...(line.eyeletLines != null && { eyeletLines: line.eyeletLines }),
+        ...(line.eyeletSpec  && { eyeletSpec:  line.eyeletSpec }),
         // Shared optional fields
-        ...(data.mbCode      && { mbCode:      data.mbCode }),
-        ...(data.meshType    && { meshType:    data.meshType }),
-        ...(data.needleCount != null && { needleCount: data.needleCount }),
-        ...(data.beamCount   != null && { beamCount:   data.beamCount }),
-        ...(data.description && { description: data.description }),
-        ...(data.remark      && { remark:      data.remark }),
+        ...(mbCode      && { mbCode }),
+        ...(description && { description }),
+        ...(remark      && { remark }),
         // Per-line optional fields
-        ...(line.uvPct  != null && { uvPct:  line.uvPct }),
+        ...(line.uvPct  != null && { uvPct: line.uvPct }),
         frFlag:    line.frFlag ?? false,
         hasEyelet: line.hasEyelet ?? false,
         ...(line.eyeletColor && { eyeletColor: line.eyeletColor }),
-        // Calculated weight
+        // Calculated weight (Case A formula)
         qtySqm,
         totalWeightKgs,
         // dataSource: tracks provenance for AI training data quality
@@ -107,7 +118,7 @@ export async function POST(req: NextRequest) {
       }
     })
 
-    // ── 6. Prisma transaction — all-or-nothing ─────────────────────────────────
+    // ── 7. Prisma transaction — all-or-nothing ─────────────────────────────────
     const created = await prisma.$transaction(
       createPayload.map((row) => prisma.productionOrder.create({ data: row }))
     )

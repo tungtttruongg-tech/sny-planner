@@ -1,9 +1,15 @@
 'use client'
 
 // src/components/orders/MultiLineOrderForm.tsx
-// Unified order-creation form — shared PI/Customer/GSM/specs at top,
-// N repeatable per-line rows below. Single sub-line = 1 row.
-// Live weight + meter calculation per row via calculateOrderWeight().
+// Unified order-creation form — shared PI/Customer/MBCode/Notes at top,
+// N repeatable per-line rows below.
+//
+// Per-line fields (after migration):
+//   gsm, meshType, needleCount, beamCount — moved from shared → per-line
+//   eyeletLines, eyeletSpec — new per-line eyelet spec fields
+//
+// "+ Thêm dòng" copies ALL per-line fields from the previous row so planners
+// only need to adjust the fields that differ (usually just color/width).
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -15,17 +21,23 @@ type OrderType = 'meters' | 'rolls' | 'pieces'
 
 interface LineItem {
   id: number          // ephemeral UI key only
+  color: string
   widthM: string
+  gsm: string         // per-line (was shared)
   orderType: OrderType
   lengthM: string
   qty: string
   rollLength: string
   pieceLength: string
-  color: string
   uvPct: string
   frFlag: boolean
   hasEyelet: boolean
   eyeletColor: string
+  meshType: string    // per-line (was shared)
+  needleCount: string // per-line (was shared)
+  beamCount: string   // per-line (was shared)
+  eyeletLines: string // new
+  eyeletSpec: string  // new
 }
 
 // ── Styling helpers ───────────────────────────────────────────────────────────
@@ -62,9 +74,9 @@ function Label({ children, required }: { children: React.ReactNode; required?: b
 
 // ── Live calculation per line ─────────────────────────────────────────────────
 
-function calcLine(line: LineItem, gsm: number) {
+function calcLine(line: LineItem) {
   const w = parseFloat(line.widthM)
-  const g = gsm
+  const g = parseInt(line.gsm)
   if (!w || !g || isNaN(w) || isNaN(g)) return null
 
   const qty         = line.qty         ? parseInt(line.qty)           : null
@@ -86,23 +98,39 @@ function calcLine(line: LineItem, gsm: number) {
   return result
 }
 
-// ── Empty line factory ────────────────────────────────────────────────────────
+// ── Empty/default line factory ────────────────────────────────────────────────
 
 let _lineIdCounter = 0
 function newLine(): LineItem {
   return {
     id: ++_lineIdCounter,
+    color: '',
     widthM: '',
+    gsm: '',
     orderType: 'rolls',
     lengthM: '',
     qty: '',
     rollLength: '',
     pieceLength: '',
-    color: '',
     uvPct: '',
     frFlag: false,
     hasEyelet: false,
     eyeletColor: '',
+    meshType: '',
+    needleCount: '',
+    beamCount: '',
+    eyeletLines: '',
+    eyeletSpec: '',
+  }
+}
+
+// Copies a line for "+ Thêm dòng" — resets only color (usually changes per line)
+function copyLine(prev: LineItem): LineItem {
+  return {
+    ...prev,
+    id: ++_lineIdCounter,
+    color: '',          // reset — most common per-line change
+    // all other fields copied so planner only adjusts what differs
   }
 }
 
@@ -111,19 +139,15 @@ function newLine(): LineItem {
 export default function MultiLineOrderForm() {
   const router = useRouter()
 
-  // ── Shared fields ─────────────────────────────────────────────────────────
+  // ── Shared fields (apply to all sub-lines) ─────────────────────────────────
   const [piNumber,    setPiNumber]    = useState('')
   const [customer,    setCustomer]    = useState('')
   const [orderDate,   setOrderDate]   = useState('')
-  const [gsm,         setGsm]         = useState('')
   const [mbCode,      setMbCode]      = useState('')
-  const [meshType,    setMeshType]    = useState('')
-  const [needleCount, setNeedleCount] = useState('')
-  const [beamCount,   setBeamCount]   = useState('')
   const [description, setDescription] = useState('')
   const [remark,      setRemark]      = useState('')
 
-  // ── Lines ─────────────────────────────────────────────────────────────────
+  // ── Lines (now include gsm, meshType, needleCount, beamCount per line) ──────
   const [lines, setLines] = useState<LineItem[]>([newLine()])
 
   // ── UI state ──────────────────────────────────────────────────────────────
@@ -133,7 +157,8 @@ export default function MultiLineOrderForm() {
 
   // ── Line mutation helpers ─────────────────────────────────────────────────
 
-  const addLine = () => setLines((prev) => [...prev, newLine()])
+  // Copy all fields from last line (only color reset) — prevents re-entering common specs
+  const addLine = () => setLines((prev) => [...prev, copyLine(prev[prev.length - 1])])
 
   const removeLine = (id: number) =>
     setLines((prev) => prev.length > 1 ? prev.filter((l) => l.id !== id) : prev)
@@ -152,14 +177,15 @@ export default function MultiLineOrderForm() {
     if (!piNumber.trim()) errs.piNumber  = 'PI Number là bắt buộc'
     if (!customer.trim()) errs.customer  = 'Khách hàng là bắt buộc'
     if (!orderDate)       errs.orderDate = 'Ngày đặt hàng là bắt buộc'
-    const gsmNum = parseInt(gsm)
-    if (!gsm || isNaN(gsmNum) || gsmNum <= 0) errs.gsm = 'GSM phải lớn hơn 0'
 
     lines.forEach((line, i) => {
       const p = `lines.${i}`
-      const w = parseFloat(line.widthM)
+      const w   = parseFloat(line.widthM)
+      const gsm = parseInt(line.gsm)
+
       if (!line.widthM || isNaN(w) || w <= 0) errs[`${p}.widthM`] = 'Khổ phải lớn hơn 0'
       if (!line.color.trim())                  errs[`${p}.color`]  = 'Màu là bắt buộc'
+      if (!line.gsm || isNaN(gsm) || gsm <= 0) errs[`${p}.gsm`]   = 'GSM phải lớn hơn 0'
 
       if (line.orderType === 'meters') {
         const l = parseFloat(line.lengthM)
@@ -168,7 +194,7 @@ export default function MultiLineOrderForm() {
       if (line.orderType === 'rolls') {
         const q  = parseInt(line.qty)
         const rl = parseFloat(line.rollLength)
-        if (!line.qty       || isNaN(q)  || q  <= 0) errs[`${p}.qty`]        = 'Số cuộn phải lớn hơn 0'
+        if (!line.qty        || isNaN(q)  || q  <= 0) errs[`${p}.qty`]        = 'Số cuộn phải lớn hơn 0'
         if (!line.rollLength || isNaN(rl) || rl <= 0) errs[`${p}.rollLength`] = 'Mét/cuộn phải lớn hơn 0'
       }
       if (line.orderType === 'pieces') {
@@ -190,22 +216,20 @@ export default function MultiLineOrderForm() {
     setApiError(null)
     if (!validate()) return
 
-    const gsmNum = parseInt(gsm)
     const payload = {
+      // Shared fields
       piNumber:    piNumber.trim(),
       customer:    customer.trim(),
       orderDate,
-      gsm:         gsmNum,
       mbCode:      mbCode.trim()      || undefined,
-      meshType:    meshType.trim()    || undefined,
-      needleCount: needleCount        ? parseInt(needleCount)   : undefined,
-      beamCount:   beamCount          ? parseInt(beamCount)     : undefined,
       description: description.trim() || undefined,
       remark:      remark.trim()      || undefined,
+      // Per-line fields (gsm, meshType, needleCount, beamCount now inside each line)
       lines: lines.map((line) => ({
-        widthM:    parseFloat(line.widthM),
-        orderType: line.orderType,
         color:     line.color.trim(),
+        widthM:    parseFloat(line.widthM),
+        gsm:       parseInt(line.gsm),
+        orderType: line.orderType,
         ...(line.orderType === 'meters' && {
           lengthM: parseFloat(line.lengthM),
         }),
@@ -221,6 +245,11 @@ export default function MultiLineOrderForm() {
         frFlag:     line.frFlag,
         hasEyelet:  line.hasEyelet,
         eyeletColor: line.hasEyelet && line.eyeletColor.trim() ? line.eyeletColor.trim() : undefined,
+        meshType:    line.meshType.trim()    || undefined,
+        needleCount: line.needleCount        ? parseInt(line.needleCount)   : undefined,
+        beamCount:   line.beamCount          ? parseInt(line.beamCount)     : undefined,
+        eyeletLines: line.eyeletLines        ? parseInt(line.eyeletLines)   : undefined,
+        eyeletSpec:  line.eyeletSpec.trim()  || undefined,
       })),
     }
 
@@ -245,8 +274,6 @@ export default function MultiLineOrderForm() {
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
-
-  const gsmNum = parseInt(gsm) || 0
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-6">
@@ -307,23 +334,6 @@ export default function MultiLineOrderForm() {
             {fieldErrors.orderDate && <p className="text-xs text-error mt-1">{fieldErrors.orderDate}</p>}
           </div>
 
-          {/* GSM */}
-          <div>
-            <Label required>GSM</Label>
-            <input
-              id="ml-gsm"
-              type="number"
-              min={1}
-              max={500}
-              step={1}
-              placeholder="e.g. 95"
-              value={gsm}
-              onChange={(e) => setGsm(e.target.value)}
-              className={monoInputCls(!!fieldErrors.gsm)}
-            />
-            {fieldErrors.gsm && <p className="text-xs text-error mt-1">{fieldErrors.gsm}</p>}
-          </div>
-
           {/* MB Code */}
           <div>
             <Label>Mã màu (MB Code)</Label>
@@ -337,51 +347,8 @@ export default function MultiLineOrderForm() {
             />
           </div>
 
-          {/* Mesh Type */}
-          <div>
-            <Label>Thể loại lưới</Label>
-            <input
-              id="ml-meshType"
-              type="text"
-              placeholder="e.g. PP MONO"
-              value={meshType}
-              onChange={(e) => setMeshType(e.target.value)}
-              className={inputCls()}
-            />
-          </div>
-
-          {/* Needle Count */}
-          <div>
-            <Label>Số kim</Label>
-            <input
-              id="ml-needleCount"
-              type="number"
-              min={1}
-              step={1}
-              placeholder="e.g. 192"
-              value={needleCount}
-              onChange={(e) => setNeedleCount(e.target.value)}
-              className={monoInputCls()}
-            />
-          </div>
-
-          {/* Beam Count */}
-          <div>
-            <Label>Số dàn</Label>
-            <input
-              id="ml-beamCount"
-              type="number"
-              min={1}
-              step={1}
-              placeholder="e.g. 2"
-              value={beamCount}
-              onChange={(e) => setBeamCount(e.target.value)}
-              className={monoInputCls()}
-            />
-          </div>
-
           {/* Description */}
-          <div className="sm:col-span-2 lg:col-span-3">
+          <div className="sm:col-span-2 lg:col-span-2">
             <Label>Mô tả (Description)</Label>
             <textarea
               id="ml-description"
@@ -420,8 +387,8 @@ export default function MultiLineOrderForm() {
         </div>
 
         {lines.map((line, idx) => {
-          const calc   = calcLine(line, gsmNum)
-          const p      = `lines.${idx}`
+          const calc = calcLine(line)
+          const p    = `lines.${idx}`
 
           return (
             <div
@@ -447,7 +414,7 @@ export default function MultiLineOrderForm() {
                 </button>
               </div>
 
-              {/* Main grid — required fields */}
+              {/* Required fields grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-3">
 
                 {/* Color */}
@@ -471,10 +438,7 @@ export default function MultiLineOrderForm() {
                   <Label required>Khổ (m)</Label>
                   <input
                     id={`ml-line-${line.id}-widthM`}
-                    type="number"
-                    min={0.1}
-                    max={20}
-                    step={0.1}
+                    type="number" min={0.1} max={20} step={0.1}
                     placeholder="e.g. 4.0"
                     value={line.widthM}
                     onChange={(e) => updateLine(line.id, { widthM: e.target.value })}
@@ -482,6 +446,22 @@ export default function MultiLineOrderForm() {
                   />
                   {fieldErrors[`${p}.widthM`] && (
                     <p className="text-xs text-error mt-1">{fieldErrors[`${p}.widthM`]}</p>
+                  )}
+                </div>
+
+                {/* GSM — per-line (moved from shared) */}
+                <div>
+                  <Label required>GSM</Label>
+                  <input
+                    id={`ml-line-${line.id}-gsm`}
+                    type="number" min={1} max={500} step={1}
+                    placeholder="e.g. 95"
+                    value={line.gsm}
+                    onChange={(e) => updateLine(line.id, { gsm: e.target.value })}
+                    className={monoInputCls(!!fieldErrors[`${p}.gsm`])}
+                  />
+                  {fieldErrors[`${p}.gsm`] && (
+                    <p className="text-xs text-error mt-1">{fieldErrors[`${p}.gsm`]}</p>
                   )}
                 </div>
 
@@ -500,16 +480,13 @@ export default function MultiLineOrderForm() {
                   </select>
                 </div>
 
-                {/* orderType = meters → Length */}
+                {/* meters → Length */}
                 {line.orderType === 'meters' && (
                   <div>
                     <Label required>Chiều dài (m)</Label>
                     <input
                       id={`ml-line-${line.id}-lengthM`}
-                      type="number"
-                      min={1}
-                      max={100000}
-                      step={1}
+                      type="number" min={1} max={100000} step={1}
                       placeholder="e.g. 30000"
                       value={line.lengthM}
                       onChange={(e) => updateLine(line.id, { lengthM: e.target.value })}
@@ -521,16 +498,14 @@ export default function MultiLineOrderForm() {
                   </div>
                 )}
 
-                {/* orderType = rolls → qty + rollLength */}
+                {/* rolls → qty + rollLength */}
                 {line.orderType === 'rolls' && (
                   <>
                     <div>
                       <Label required>Số cuộn</Label>
                       <input
                         id={`ml-line-${line.id}-qty`}
-                        type="number"
-                        min={1}
-                        step={1}
+                        type="number" min={1} step={1}
                         placeholder="e.g. 200"
                         value={line.qty}
                         onChange={(e) => updateLine(line.id, { qty: e.target.value })}
@@ -544,9 +519,7 @@ export default function MultiLineOrderForm() {
                       <Label required>Mét/cuộn</Label>
                       <input
                         id={`ml-line-${line.id}-rollLength`}
-                        type="number"
-                        min={0.1}
-                        step={0.01}
+                        type="number" min={0.1} step={0.01}
                         placeholder="e.g. 50"
                         value={line.rollLength}
                         onChange={(e) => updateLine(line.id, { rollLength: e.target.value })}
@@ -559,16 +532,14 @@ export default function MultiLineOrderForm() {
                   </>
                 )}
 
-                {/* orderType = pieces → qty + pieceLength */}
+                {/* pieces → qty + pieceLength */}
                 {line.orderType === 'pieces' && (
                   <>
                     <div>
                       <Label required>Số tấm</Label>
                       <input
                         id={`ml-line-${line.id}-qty-pieces`}
-                        type="number"
-                        min={1}
-                        step={1}
+                        type="number" min={1} step={1}
                         placeholder="e.g. 4200"
                         value={line.qty}
                         onChange={(e) => updateLine(line.id, { qty: e.target.value })}
@@ -582,9 +553,7 @@ export default function MultiLineOrderForm() {
                       <Label required>Chiều dài tấm (m)</Label>
                       <input
                         id={`ml-line-${line.id}-pieceLength`}
-                        type="number"
-                        min={0.01}
-                        step={0.01}
+                        type="number" min={0.01} step={0.01}
                         placeholder="e.g. 2.44"
                         value={line.pieceLength}
                         onChange={(e) => updateLine(line.id, { pieceLength: e.target.value })}
@@ -598,17 +567,54 @@ export default function MultiLineOrderForm() {
                 )}
               </div>
 
-              {/* Optional per-line fields */}
+              {/* Technical specs + optional fields */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pt-2 border-t-[0.5px] border-outline-variant/50">
+
+                {/* Mesh Type — per-line (moved from shared) */}
+                <div>
+                  <Label>Loại lưới</Label>
+                  <input
+                    id={`ml-line-${line.id}-meshType`}
+                    type="text"
+                    placeholder="e.g. Hex, Diamond..."
+                    value={line.meshType}
+                    onChange={(e) => updateLine(line.id, { meshType: e.target.value })}
+                    className={inputCls()}
+                  />
+                </div>
+
+                {/* Needle Count — per-line (moved from shared) */}
+                <div>
+                  <Label>Số kim</Label>
+                  <input
+                    id={`ml-line-${line.id}-needleCount`}
+                    type="number" min={1} step={1}
+                    placeholder="e.g. 192"
+                    value={line.needleCount}
+                    onChange={(e) => updateLine(line.id, { needleCount: e.target.value })}
+                    className={monoInputCls()}
+                  />
+                </div>
+
+                {/* Beam Count — per-line (moved from shared) */}
+                <div>
+                  <Label>Số dàn</Label>
+                  <input
+                    id={`ml-line-${line.id}-beamCount`}
+                    type="number" min={1} step={1}
+                    placeholder="e.g. 2"
+                    value={line.beamCount}
+                    onChange={(e) => updateLine(line.id, { beamCount: e.target.value })}
+                    className={monoInputCls()}
+                  />
+                </div>
+
                 {/* UV% */}
                 <div>
                   <Label>UV %</Label>
                   <input
                     id={`ml-line-${line.id}-uvPct`}
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.01}
+                    type="number" min={0} max={100} step={0.01}
                     placeholder="e.g. 2.5"
                     value={line.uvPct}
                     onChange={(e) => updateLine(line.id, { uvPct: e.target.value })}
@@ -662,6 +668,32 @@ export default function MultiLineOrderForm() {
                     />
                   </div>
                 )}
+
+                {/* Eyelet Lines — new per-line spec field */}
+                <div>
+                  <Label>Số lines eyelet</Label>
+                  <input
+                    id={`ml-line-${line.id}-eyeletLines`}
+                    type="number" min={1} step={1}
+                    placeholder="e.g. 4"
+                    value={line.eyeletLines}
+                    onChange={(e) => updateLine(line.id, { eyeletLines: e.target.value })}
+                    className={monoInputCls()}
+                  />
+                </div>
+
+                {/* Eyelet Spec — new per-line spec field */}
+                <div className="sm:col-span-2">
+                  <Label>Mô tả eyelet</Label>
+                  <input
+                    id={`ml-line-${line.id}-eyeletSpec`}
+                    type="text"
+                    placeholder="VD: 5cm interval, single band both edges"
+                    value={line.eyeletSpec}
+                    onChange={(e) => updateLine(line.id, { eyeletSpec: e.target.value })}
+                    className={inputCls()}
+                  />
+                </div>
               </div>
 
               {/* Live calculation preview */}
@@ -693,7 +725,7 @@ export default function MultiLineOrderForm() {
           className="inline-flex items-center gap-2 border border-dashed border-primary text-primary text-sm font-medium px-4 py-2 h-9 rounded-lg hover:bg-primary/5 transition-colors w-full justify-center"
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
-          + Thêm dòng hàng
+          + Thêm dòng hàng (copy từ dòng trước)
         </button>
       </div>
 

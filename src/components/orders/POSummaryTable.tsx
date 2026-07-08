@@ -155,14 +155,21 @@ function SubLineTable({
               <td className="px-3 py-2 font-mono text-right text-secondary">
                 {s.beamCount != null ? s.beamCount : '—'}
               </td>
-              <td className="px-3 py-2 text-center">
-                {s.hasEyelet ? (
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10">
-                    <span className="material-symbols-outlined text-[12px] text-primary">check</span>
-                  </span>
-                ) : (
-                  <span className="text-outline">—</span>
-                )}
+              <td className="px-3 py-2 text-secondary">
+                {(() => {
+                  const el = (s as { eyeletLines?: number | null }).eyeletLines
+                  const es = (s as { eyeletSpec?: string | null }).eyeletSpec
+                  if (el != null) {
+                    return <span className="font-mono">{el}L{es ? ` · ${es}` : ''}</span>
+                  }
+                  return s.hasEyelet ? (
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary/10">
+                      <span className="material-symbols-outlined text-[12px] text-primary">check</span>
+                    </span>
+                  ) : (
+                    <span className="text-outline">—</span>
+                  )
+                })()}
               </td>
               <td className="px-3 py-2 text-secondary">{s.eyeletColor ?? '—'}</td>
               <td className="px-3 py-2 font-mono text-primary font-semibold">

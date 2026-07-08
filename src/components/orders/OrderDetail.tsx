@@ -191,6 +191,8 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
       // Eyelet
       hasEyelet: currentOrder.hasEyelet,
       eyeletColor: currentOrder.eyeletColor ?? undefined,
+      eyeletLines: (currentOrder as { eyeletLines?: number | null }).eyeletLines ?? undefined,
+      eyeletSpec:  (currentOrder as { eyeletSpec?: string | null }).eyeletSpec  ?? undefined,
     })
     setMode('edit')
   }
@@ -379,9 +381,20 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
             <ViewField label="Chiều dài tấm" value={`${parseFloat(currentOrder.pieceLength)} m`} mono />
           )}
           <ViewField label="Eyelet" value={
-            currentOrder.hasEyelet
-              ? <span className="text-on-surface font-medium font-inter text-label-md">Có</span>
-              : <span className="text-outline font-inter text-label-md">Không</span>
+            (() => {
+              const el = (currentOrder as { eyeletLines?: number | null }).eyeletLines
+              const es = (currentOrder as { eyeletSpec?: string | null }).eyeletSpec
+              if (el != null) {
+                return (
+                  <span className="text-on-surface font-medium font-inter text-label-md">
+                    {el} lines{es ? ` — ${es}` : ''}
+                  </span>
+                )
+              }
+              return currentOrder.hasEyelet
+                ? <span className="text-on-surface font-medium font-inter text-label-md">Có</span>
+                : <span className="text-outline font-inter text-label-md">Không</span>
+            })()
           } />
           {currentOrder.hasEyelet && currentOrder.eyeletColor && (
             <ViewField label="Màu eyelet" value={currentOrder.eyeletColor} />
@@ -426,6 +439,17 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
                   )}
                   {currentOrder.needleCount != null && <ViewField label="Số kim" value={currentOrder.needleCount} mono />}
                   {currentOrder.beamCount  != null && <ViewField label="Số dàn"  value={currentOrder.beamCount}  mono />}
+                  {(currentOrder as { eyeletLines?: number | null }).eyeletLines != null && (
+                    <ViewField label="Số lines eyelet"
+                      value={(currentOrder as { eyeletLines?: number | null }).eyeletLines}
+                      mono
+                    />
+                  )}
+                  {(currentOrder as { eyeletSpec?: string | null }).eyeletSpec && (
+                    <ViewField label="Mô tả eyelet"
+                      value={(currentOrder as { eyeletSpec?: string | null }).eyeletSpec}
+                    />
+                  )}
                 </dl>
               </>
             )}
@@ -647,6 +671,25 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
               />
             </FormField>
           )}
+          {/* Eyelet spec fields (new) */}
+          <FormField label="Số lines eyelet" error={(errors as Record<string, { message?: string }>).eyeletLines?.message}>
+            <input
+              id="edit-eyeletLines"
+              type="number" min={1} step={1}
+              placeholder="e.g. 4"
+              className={inputCls(true, false)}
+              {...register('eyeletLines' as Parameters<typeof register>[0], { setValueAs: (v: string) => (v === '' || v === null) ? null : Number(v) })}
+            />
+          </FormField>
+          <FormField label="Mô tả eyelet" error={(errors as Record<string, { message?: string }>).eyeletSpec?.message}>
+            <input
+              id="edit-eyeletSpec"
+              type="text"
+              placeholder="e.g. 5cm interval, single band both edges"
+              className={inputCls(false, false)}
+              {...register('eyeletSpec' as Parameters<typeof register>[0], { setValueAs: (v: string) => (v === '' ? null : v) })}
+            />
+          </FormField>
           <div className="sm:col-span-2">
             <FormField label="Description" error={errors.description?.message} hint="Max 200 characters">
               <textarea id="edit-description" rows={2} className={`${inputCls(false, !!errors.description)} resize-none`} {...register('description')} />
