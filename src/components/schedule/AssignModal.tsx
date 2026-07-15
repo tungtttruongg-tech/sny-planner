@@ -1,10 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { getUnassignedOrders } from '@/app/schedule/actions'
-import { format } from 'date-fns'
+// src/components/schedule/AssignModal.tsx
+// Opens when the planner clicks an empty machine slot on the schedule grid.
+// Lets them pick an order sub-line → enter end date → assign.
+//
+// After AssignModal Sub-line Detail sprint:
+//   - Order type extended to include per-sub-line fields
+//   - Dropdown shows each sub-line with structured label
+//   - Detail panel appears immediately after selecting a sub-line
 
-type Order = { id: string; piNumber: string; customer: string }
+import { useState, useEffect } from 'react'
+import { format } from 'date-fns'
+import { getUnassignedOrders } from '@/app/schedule/actions'
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type Order = Awaited<ReturnType<typeof getUnassignedOrders>>[number]
 
 interface Props {
   isOpen: boolean
@@ -14,21 +25,76 @@ interface Props {
   onSuccess: () => void
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Format one sub-line as a structured dropdown option label. */
+function formatOrderLabel(o: Order): string {
+  const base = `${o.piNumber} · Dòng ${o.subLineIndex + 1} — ${Number(o.widthM).toFixed(1)}m · ${o.color} · ${o.gsm}gsm`
+  return o.meshType ? `${base} · ${o.meshType}` : base
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function DetailRow({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+}) {
+  return (
+    <div className="flex gap-1 min-w-0">
+      <span className="text-label-sm font-inter text-secondary shrink-0">{label}:</span>
+      <span className={`text-label-sm font-inter text-on-surface truncate ${mono ? 'font-mono' : ''}`}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
+/** Detail card shown after selecting a sub-line in the dropdown. */
+function SubLineDetailPanel({ o }: { o: Order }) {
+  return (
+    <div className="rounded-lg bg-surface-container-low border-[0.5px] border-outline-variant px-3 py-2 mt-2">
+      <p className="text-label-sm font-inter font-semibold text-primary mb-1.5">
+        {o.piNumber} · Dòng {o.subLineIndex + 1}
+      </p>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+        <DetailRow label="Khách"      value={o.customer} />
+        <DetailRow label="Chiều rộng" value={`${Number(o.widthM).toFixed(1)} m`} mono />
+        <DetailRow label="GSM"        value={String(o.gsm)} mono />
+        <DetailRow label="Màu"        value={o.color} />
+        {o.meshType && <DetailRow label="Loại lưới" value={o.meshType} />}
+        <DetailRow label="Tổng mét"   value={`${Number(o.lengthM).toLocaleString('vi-VN')} m`} mono />
+        {o.qty != null && (
+          <DetailRow label="Số lượng" value={`${o.qty.toLocaleString('vi-VN')} cuộn`} mono />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function AssignModal({ isOpen, onClose, machineId, startDate, onSuccess }: Props) {
-  const [orders, setOrders] = useState<Order[]>([])
-  const [selectedOrderId, setSelectedOrderId] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [allocatedMeters, setAllocatedMeters] = useState('')
+  const [orders,               setOrders]               = useState<Order[]>([])
+  const [selectedOrderId,      setSelectedOrderId]      = useState('')
+  const [endDate,              setEndDate]              = useState('')
+  const [allocatedMeters,      setAllocatedMeters]      = useState('')
   const [estimatedDailyOutput, setEstimatedDailyOutput] = useState('')
-  const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [error,                setError]                = useState('')
+  const [isLoading,            setIsLoading]            = useState(false)
 
   useEffect(() => {
     if (isOpen) {
       getUnassignedOrders().then(setOrders).catch(console.error)
       if (startDate) {
+        // Pre-fill end date with start date
         setEndDate(format(startDate, 'yyyy-MM-dd'))
       }
+      // Reset selection state when modal opens
       setSelectedOrderId('')
       setAllocatedMeters('')
       setEstimatedDailyOutput('')
@@ -38,54 +104,44 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
 
   if (!isOpen || !startDate) return null
 
+  // Derived: the full Order object for the currently-selected id
+  const selectedOrder = orders.find(o => o.id === selectedOrderId) ?? null
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setIsLoading(true)
 
     try {
-      console.log('Raw startDate:', startDate)
-      console.log('Raw endDate:', endDate)
-
-      // endDate is from <input type="date"> which stores value as YYYY-MM-DD
-      const parsedEnd = new Date(endDate)
-      
-      // startDate is already a Date object, but let's parse its YYYY-MM-DD to avoid time comparison issues
       const parsedStart = new Date(format(startDate, 'yyyy-MM-dd'))
-
+      const parsedEnd   = new Date(endDate)
       if (parsedEnd < parsedStart) {
-        setError('End Date cannot be before Start Date')
+        setError('Ngày kết thúc không được trước ngày bắt đầu')
         setIsLoading(false)
         return
       }
-
-      // Format as true ISO strings for Zod validation (.toISOString() outputs '...Z')
-      const startISO = new Date(`${format(startDate, 'yyyy-MM-dd')}T00:00:00+07:00`).toISOString()
-      const endISO = new Date(`${endDate}T00:00:00+07:00`).toISOString()
 
       const res = await fetch('/api/assignments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           machineId,
-          orderId: selectedOrderId,
-          startDate: startISO,
-          endDate: endISO,
-          // Gửi số mét phân công nếu planner có nhập
-          ...(allocatedMeters !== '' && { allocatedMeters: Number(allocatedMeters) }),
-          // Gửi sản lượng dự kiến nếu planner có nhập
+          orderId:   selectedOrderId,
+          startDate: format(startDate, 'yyyy-MM-dd'),
+          endDate,
+          ...(allocatedMeters      !== '' && { allocatedMeters:      Number(allocatedMeters) }),
           ...(estimatedDailyOutput !== '' && { estimatedDailyOutput: Number(estimatedDailyOutput) }),
-        })
+        }),
       })
 
       const data = await res.json()
       if (!res.ok) {
-        throw new Error(data.message || 'Failed to create assignment')
+        throw new Error(data.error || data.message || 'Lỗi không xác định')
       }
       onSuccess()
       onClose()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Lỗi mạng')
     } finally {
       setIsLoading(false)
     }
@@ -97,63 +153,87 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
       onClick={onClose}
     >
       <div
-        className="bg-surface rounded-xl shadow-lg w-full max-w-md overflow-hidden"
+        className="bg-surface rounded-xl shadow-lg w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
-        <div className="px-md py-sm border-b-[0.5px] border-outline-variant flex justify-between items-center">
-          <h3 className="text-headline-sm font-inter font-semibold text-on-surface">Assign Order</h3>
+        {/* Header */}
+        <div className="px-md py-sm border-b-[0.5px] border-outline-variant flex justify-between items-center sticky top-0 bg-surface z-10">
+          <h3 className="text-headline-sm font-inter font-semibold text-on-surface">Xếp máy</h3>
           <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="p-md">
+          {/* Error */}
           {error && (
-            <div className="mb-md p-sm rounded-lg bg-[#FFF8E7] border border-[#F59E0B] text-[#92400E] text-label-sm">
+            <div className="mb-md p-sm rounded-lg bg-error-container border border-error/30 text-error text-label-sm">
               {error}
             </div>
           )}
-          
+
           <div className="space-y-md">
+            {/* Machine (read-only) */}
             <div>
-              <label className="block text-label-sm font-medium text-secondary mb-xs">Machine</label>
-              <input type="text" disabled value={machineId} className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline-variant bg-surface-container-lowest text-on-surface-variant font-mono text-type-mono" />
+              <label className="block text-label-sm font-medium text-secondary mb-xs">Máy</label>
+              <input
+                type="text"
+                disabled
+                value={machineId}
+                className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline-variant bg-surface-container-lowest text-on-surface-variant font-mono text-type-mono"
+              />
             </div>
 
+            {/* Order / sub-line selector */}
             <div>
-              <label className="block text-label-sm font-medium text-secondary mb-xs">Order</label>
-              <select 
+              <label className="block text-label-sm font-medium text-secondary mb-xs">
+                Đơn hàng — Dòng hàng
+              </label>
+              <select
                 required
-                value={selectedOrderId} 
+                value={selectedOrderId}
                 onChange={e => setSelectedOrderId(e.target.value)}
                 className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none text-body-md"
               >
-                <option value="">Select an order...</option>
+                <option value="">Chọn dòng hàng...</option>
                 {orders.map(o => (
-                  <option key={o.id} value={o.id}>{o.piNumber} ({o.customer})</option>
+                  <option key={o.id} value={o.id}>
+                    {formatOrderLabel(o)}
+                  </option>
                 ))}
               </select>
+
+              {/* Detail panel — renders immediately after selection */}
+              {selectedOrder && <SubLineDetailPanel o={selectedOrder} />}
             </div>
 
+            {/* Date range */}
             <div className="flex gap-sm">
+              {/* Start date (read-only — from clicked cell) */}
               <div className="flex-1">
-                <label className="block text-label-sm font-medium text-secondary mb-xs">Start Date</label>
-                <input type="text" disabled value={format(startDate, 'dd/MM/yyyy')} className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline-variant bg-surface-container-lowest text-on-surface-variant" />
+                <label className="block text-label-sm font-medium text-secondary mb-xs">Bắt đầu</label>
+                <input
+                  type="text"
+                  disabled
+                  value={format(startDate, 'dd/MM/yyyy')}
+                  className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline-variant bg-surface-container-lowest text-on-surface-variant"
+                />
               </div>
+              {/* End date (editable) */}
               <div className="flex-1">
-                <label className="block text-label-sm font-medium text-secondary mb-xs">End Date</label>
-                <input 
-                  type="date" 
+                <label className="block text-label-sm font-medium text-secondary mb-xs">Kết thúc</label>
+                <input
+                  type="date"
                   required
                   min={format(startDate, 'yyyy-MM-dd')}
                   value={endDate}
                   onChange={e => setEndDate(e.target.value)}
-                  className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary outline-none" 
+                  className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary outline-none"
                 />
               </div>
             </div>
 
-            {/* Số mét phân công */}
+            {/* Allocated meters */}
             <div>
               <label className="block text-label-sm font-medium text-secondary mb-xs">Số mét phân công</label>
               <input
@@ -167,7 +247,7 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
               />
             </div>
 
-            {/* Sản lượng dự kiến */}
+            {/* Estimated daily output */}
             <div>
               <label className="block text-label-sm font-medium text-secondary mb-xs">
                 Sản lượng dự kiến (m/ngày)
@@ -185,12 +265,21 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
             </div>
           </div>
 
+          {/* Actions */}
           <div className="mt-xl flex justify-end gap-sm">
-            <button type="button" onClick={onClose} className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors">
-              Cancel
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
+            >
+              Huỷ
             </button>
-            <button type="submit" disabled={isLoading} className="inline-flex items-center justify-center gap-sm bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 disabled:opacity-60 transition-colors">
-              {isLoading ? 'Saving...' : 'Assign'}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="inline-flex items-center justify-center gap-sm bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 disabled:opacity-60 transition-colors"
+            >
+              {isLoading ? 'Đang lưu...' : 'Xếp máy'}
             </button>
           </div>
         </form>

@@ -131,12 +131,51 @@ export default function AssignFromOrderModal({ order, onAssigned, onClose }: Pro
               </div>
             )}
 
-            {/* Order info (read-only) */}
+            {/* Order info (sub-line detail) */}
             <div className="rounded-lg bg-surface-container-low border-[0.5px] border-outline-variant px-md py-sm">
-              <p className="text-label-sm font-medium text-secondary mb-xs">Đơn hàng</p>
-              <p className="text-body-md font-mono font-semibold text-on-surface">{order.piNumber}</p>
-              <p className="text-label-sm text-on-surface-variant">{order.customer}</p>
+              <p className="text-label-sm font-inter font-semibold text-primary mb-1.5">
+                {order.piNumber} · Dòng {order.subLineIndex + 1}
+              </p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                <div className="flex gap-1 min-w-0">
+                  <span className="text-label-sm font-inter text-secondary shrink-0">Khách:</span>
+                  <span className="text-label-sm font-inter text-on-surface truncate">{order.customer}</span>
+                </div>
+                <div className="flex gap-1 min-w-0">
+                  <span className="text-label-sm font-inter text-secondary shrink-0">Chiều rộng:</span>
+                  <span className="text-label-sm font-inter font-mono text-on-surface">{Number(order.widthM).toFixed(1)} m</span>
+                </div>
+                <div className="flex gap-1 min-w-0">
+                  <span className="text-label-sm font-inter text-secondary shrink-0">GSM:</span>
+                  <span className="text-label-sm font-inter font-mono text-on-surface">{order.gsm}</span>
+                </div>
+                <div className="flex gap-1 min-w-0">
+                  <span className="text-label-sm font-inter text-secondary shrink-0">Màu:</span>
+                  <span className="text-label-sm font-inter text-on-surface truncate">{order.color}</span>
+                </div>
+                {order.meshType && (
+                  <div className="flex gap-1 min-w-0">
+                    <span className="text-label-sm font-inter text-secondary shrink-0">Loại lưới:</span>
+                    <span className="text-label-sm font-inter text-on-surface truncate">{order.meshType}</span>
+                  </div>
+                )}
+                <div className="flex gap-1 min-w-0">
+                  <span className="text-label-sm font-inter text-secondary shrink-0">Tổng mét:</span>
+                  <span className="text-label-sm font-inter font-mono text-on-surface">
+                    {Number(order.lengthM).toLocaleString('vi-VN')} m
+                  </span>
+                </div>
+                {order.qty != null && (
+                  <div className="flex gap-1 min-w-0">
+                    <span className="text-label-sm font-inter text-secondary shrink-0">Số lượng:</span>
+                    <span className="text-label-sm font-inter font-mono text-on-surface">
+                      {order.qty.toLocaleString('vi-VN')} cuộn
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
+
 
             {/* Machine */}
             <div>
