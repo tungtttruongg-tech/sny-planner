@@ -2,7 +2,8 @@
 > Ground truth for all AI coding agents (Antigravity, Cursor).
 > READ THIS ENTIRE FILE before generating any code.
 > If context in this file conflicts with your judgment → this file wins.
-> Last updated: 04/07/2026
+> Last updated: 15/07/2026
+> Last sprint DONE: AssignModal Sub-line Detail — dropdown + detail panel per sub-line ✅
 
 ---
 
@@ -23,8 +24,8 @@ Replace 4 disconnected Excel files with 1 system.
 Flow: Sales Order → Production Order → Machine Schedule → Material Planning.
 
 **Phase 1 (DONE):** Endusers enter data into tool. Stop using Excel.
-**Last sprint DONE:** PO Summary + estimatedDailyOutput — Loan xem được tất cả sub-line theo PI Number; Dung nhập sản lượng dự kiến khi assign.
-**Current sprint PENDING:** Xác định scope "lượng đã sản xuất / còn phải sản xuất" — đang chờ Dung/Loan trả lời 4 câu hỏi (ai nhập, tần suất, nguồn hiện tại, theo đơn hay theo máy). CHƯA BUILD.
+**Last sprint DONE:** AssignModal Sub-line Detail — dropdown đổi từ PI-level sang per-sub-line, detail panel hiện sau khi chọn, AssignFromOrderModal mở rộng order info panel.
+**Next sprints (Must have trước G3 24-27/7):** mbCode per-line · frPct thay frFlag · Status badge + filter.
 **Phase 2 (later):** AI automation, auto-scheduling, formula calculations, alerts.
 
 ---
@@ -133,6 +134,45 @@ Flow: Sales Order → Production Order → Machine Schedule → Material Plannin
 - `MachineAssignment.estimatedDailyOutput` (Decimal?, nullable) — planner nhập tay khi assign PO vào máy qua `AssignModal.tsx` / `AssignFromOrderModal.tsx`. Hiển thị trong `DetailModal.tsx`. **Input only — KHÔNG có logic tính toán tự động từ field này.**
 - `OrderDetail.tsx` view mode: bổ sung hiển thị `qtySqm` ("Diện tích (m²)") + `dataSource` ("Nguồn dữ liệu") — tất cả field trong DB đã được surface đầy đủ.
 - "PO Summary" button thêm vào `/orders` page header (outline style, giữa Bulk paste và New order).
+
+### Knitting Daily Output ✅
+- `src/lib/excel/parseKnittingReport.ts` — parser sheet KNITTING từ STATISTICAL REPORT file.
+  - Đọc col I (index 8) từ TOTAL row cho `dailyMeters` (đã là sản lượng ngày, không phải cumulative)
+  - Date từ col O (index 14) dạng **Excel serial number** → `serialToDate()` tính UTC math trực tiếp.
+    **KHÔNG dùng JS Date object** — tránh timezone issue (SheetJS UTC vs UTC+7 offset).
+  - 1 file có thể chứa nhiều ngày; chỉ reset `currentDate` khi gặp `'MACHINE 1'` header.
+  - MACHINE 2→40 header rows bị skip (không reset date, không emit record).
+- `src/app/api/knitting/import/route.ts` — preview POST (parse only, no DB write)
+- `src/app/api/knitting/import/confirm/route.ts` — confirm POST, upsert theo `[machineId, reportDate]`.
+  `dailyMeters` lưu thẳng từ col I, không tính delta. `cumulativeMeters` = same value (field giữ cho schema compat).
+- `src/app/api/knitting/progress/[orderId]/route.ts` — GET `producedMeters`, `remainingMeters`,
+  `avgDailyOutput` (avg 7 ngày gần nhất > 0), `remainingDays`.
+- `src/components/materials/ImportKnittingModal.tsx` — 3-step modal (pick → preview → confirm),
+  hiển thị ngày tìm thấy + số records trước khi confirm.
+- `src/app/materials/page.tsx` — thêm "Import Knitting Report" button.
+- `src/components/orders/OrderDetail.tsx` — section "TIẾN ĐỘ SẢN XUẤT" (lazy fetch,
+  chỉ hiện khi order có MachineAssignment).
+- `src/components/orders/POSummaryTable.tsx` — cột "Đã SX (m)" + "Còn lại (m)"
+  lazy-loaded khi expand PI Number group (1 fetch/sub-line, chỉ khi expand).
+- `scripts/clear-knitting.ts` — one-time script đã chạy 04/07/2026 để clear data test.
+  Giữ lại trong repo làm audit trail. **KHÔNG chạy lại** trừ khi cần reset.
+
+### AssignModal Sub-line Detail ✅
+- `src/app/schedule/actions.ts` — thêm `subLineIndex`, `widthM`, `gsm`, `color`,
+  `meshType`, `lengthM`, `qty` vào select. Sort dùng JS `localeCompare` với
+  `{ numeric: true }` thay vì Prisma `orderBy` (Prisma sort lexicographic,
+  không có numeric equivalent). **Không dùng Prisma orderBy cho query này.**
+- `src/components/schedule/AssignModal.tsx` — dropdown đổi từ PI-level sang
+  sub-line-level. Order type inferred từ server action return type (type-safe).
+  Format label: `"{piNumber} · Dòng {subLineIndex+1} — {widthM}m · {color} · {gsm}gsm[ · {meshType}]"`
+  meshType chỉ hiện nếu có giá trị (không hiện null/undefined).
+  Detail panel `SubLineDetailPanel` hiện ngay sau khi chọn sub-line:
+  piNumber, subLineIndex, customer, widthM, gsm, color, meshType, lengthM, qty.
+- `src/components/schedule/AssignFromOrderModal.tsx` — mở rộng order
+  info panel từ 3 fields lên 7 fields (piNumber, subLineIndex, customer,
+  widthM, gsm, color, meshType, lengthM, qty).
+- API `/api/assignments` và `/api/orders` **KHÔNG thay đổi** — đã đúng từ
+  trước (`orderId` là id của sub-line cụ thể, không phải PI-level).
 
 ### Order type variants ✅
 - All order forms support 3 order types with conditional fields:
@@ -327,6 +367,24 @@ model MaterialTransaction {
 }
 ```
 
+### KnittingDailyOutput
+```prisma
+model KnittingDailyOutput {
+  id               String   @id @default(cuid())
+  machineId        String   // "M-001" to "M-040"
+  reportDate       DateTime // UTC midnight của ngày báo cáo (từ serial number, không phải JS Date)
+  dailyMeters      Decimal  @db.Decimal(10, 2) // mét dệt trong ngày (col I từ file)
+  cumulativeMeters Decimal  @db.Decimal(10, 2) // giữ cho schema compat, = dailyMeters
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  @@unique([machineId, reportDate])
+  @@map("knitting_daily_output")
+}
+```
+⚠️ Note: `cumulativeMeters` hiện lưu cùng giá trị với `dailyMeters` —
+field này không còn ý nghĩa "cumulative", giữ lại để không breaking schema.
+Sprint sau có thể cleanup nếu cần.
+
 ---
 
 ## 5. Tech stack (fixed — do NOT change)
@@ -427,20 +485,24 @@ sny-planner/
 | Multi-line order form (merged, replaces /orders/new) | ✅ Done |
 | dataSource field restored | ✅ Done |
 | PO Summary + Output Input | ✅ Done |
+| Knitting Daily Output | ✅ Done |
+| AssignModal Sub-line Detail | ✅ Done |
 
-## 9. Đang chờ feedback từ Dung/Loan — CHƯA BUILD
+## 9. Sprints pending — Must have trước Gate G3 (24–27/7)
 
-1. **Production output tracking** ("lượng đã sản xuất / còn phải sản xuất") — đã gửi 4 câu hỏi cho Dung/Loan qua Zalo (ai nhập, tần suất, nguồn hiện tại, theo đơn hay theo máy). CHƯA có câu trả lời. KHÔNG build trước khi có câu trả lời.
-2. **Work Order Case B/C/D** (yarnPerBeam, meterPerBeam, kgPerBeam) — công thức đã confirm, nhưng input fields (lossFactor, needles, looms, beamCount, denier) chưa rõ: planner nhập tay hay tách từ field khác. Chưa hỏi Dung.
-3. **Extruder tracking scope** — Dung xác nhận muốn nhập nhưng chưa trả lời 3 câu: số máy Extruder, theo máy hay theo loại sợi, có link trực tiếp đơn hàng không.
-4. **"Số mét tổng" trên PO Summary** — hiện chỉ có M² (TỔNG) và KG (TỔNG), chưa có cột tổng số MÉT riêng. Cần hỏi Loan có cần thiết không trước khi thêm.
+| # | Sprint | Mô tả | Status |
+|---|---|---|---|
+| 1 | mbCode per-line | Chuyển `mbCode` từ shared section xuống per-line trong `MultiLineOrderForm` | ⏳ Pending |
+| 2 | frPct thay frFlag | Thêm `frPct` (Decimal) thay `frFlag` (Boolean) — nhập % FR thay vì checkbox | ⏳ Pending |
+| 3 | Status badge + filter | Badge màu PENDING/SCHEDULED/RUNNING/DONE trên Order List và PO Summary, filter theo status | ⏳ Pending |
 
-## 9b. Next sprints (confirmed scope)
+## 9b. Backlog (sau G3 hoặc chờ feedback)
 
-| Sprint | Task | Status |
-|---|---|---|
-| Auth | NextAuth.js v5 — 3 roles: Admin/Planner/Viewer | ⏳ Next |
-| Phase 2 AI | AI-1 gợi ý lịch, AI-2 cảnh báo NVL, AI-3 chat tiếng Việt | ⏳ Phase 2 |
+1. **Work Order Case B/C/D** (yarnPerBeam, meterPerBeam, kgPerBeam) — công thức đã confirm, nhưng input fields (lossFactor, needles, looms, beamCount, denier) chưa rõ: planner nhập tay hay tách từ field khác. Chưa hỏi Dung.
+2. **Extruder tracking scope** — Dung xác nhận muốn nhập nhưng chưa trả lời 3 câu: số máy Extruder, theo máy hay theo loại sợi, có link trực tiếp đơn hàng không.
+3. **"Số mét tổng" trên PO Summary** — hiện chỉ có M² (TỔNG) và KG (TỔNG), chưa có cột tổng số MÉT riêng. Cần hỏi Loan có cần thiết không trước khi thêm.
+4. **Auth** — NextAuth.js v5, 3 roles: Admin/Planner/Viewer (sprint riêng sau G3).
+5. **Phase 2 AI** — AI-1 gợi ý lịch, AI-2 cảnh báo NVL, AI-3 chat tiếng Việt.
 
 ---
 
@@ -454,7 +516,7 @@ sny-planner/
 - ❌ Multi-tenancy
 - ❌ Pricing fields (U/Price, Amount, Total Amount) — không có trong schema
 - ❌ "Mark" field (e.g. T100 labeling) — không có trong schema
-- ❌ Production output tracking — chờ feedback Dung/Loan, xem mục 9
+- ❌ Production output tracking — **ĐÃ BUILD** (Knitting Daily Output sprint). Còn chờ: Dung/Loan xác nhận UX flow sau khi dùng thật. Xem mục "Knitting Daily Output ✅" ở trên.
 - ❌ Auto days-to-complete từ estimatedDailyOutput — Phase 2
 - ❌ Net/Gross weight (packing-stage data)
 
