@@ -11,6 +11,7 @@ import MaterialsTable from '@/components/materials/MaterialsTable'
 import TransactionHistoryModal from '@/components/materials/TransactionHistoryModal'
 import ImportMaterialReportModal from '@/components/materials/ImportMaterialReportModal'
 import ImportKnittingModal from '@/components/materials/ImportKnittingModal'
+import MaterialSidePanel from '@/components/materials/MaterialSidePanel'
 
 // Note: metadata export is not supported in 'use client' components.
 // Page title is set via the <title> in the HTML head from layout.tsx.
@@ -89,6 +90,7 @@ export default function MaterialsPage() {
   const [showAddModal, setShowAddModal]       = useState(false)
   const [showImportModal, setShowImportModal]           = useState(false)
   const [showKnittingModal, setShowKnittingModal]       = useState(false)
+  const [panelMaterial, setPanelMaterial]               = useState<SerializedMaterial | null>(null)
   const [editTarget, setEditTarget]                     = useState<SerializedMaterial | null>(null)
   const [deleteTarget, setDeleteTarget]       = useState<SerializedMaterial | null>(null)
   const [historyTarget, setHistoryTarget]     = useState<SerializedMaterial | null>(null)
@@ -153,6 +155,14 @@ export default function MaterialsPage() {
           <p className="text-sm font-noto text-secondary mt-1">Quản lý tồn kho nguyên liệu</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            id="btn-download-knitting-template"
+            onClick={() => window.location.href = '/api/knitting/template'}
+            className="inline-flex items-center justify-center gap-2 border border-outline bg-surface hover:bg-surface-container text-on-surface text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">download</span>
+            Tải mẫu Dệt
+          </button>
           <button
             id="btn-import-material-report"
             onClick={() => setShowImportModal(true)}
@@ -227,6 +237,7 @@ export default function MaterialsPage() {
           onEdit={setEditTarget}
           onDelete={setDeleteTarget}
           onHistory={setHistoryTarget}
+          onRowClick={setPanelMaterial}
         />
       )}
 
@@ -279,6 +290,16 @@ export default function MaterialsPage() {
           onConfirm={handleDeleteConfirm}
           onCancel={() => setDeleteTarget(null)}
           isDeleting={isDeleting}
+        />
+      )}
+
+      {/* Side Panel for threshold & transactions */}
+      {panelMaterial && (
+        <MaterialSidePanel
+          material={panelMaterial}
+          isOpen={!!panelMaterial}
+          onClose={() => setPanelMaterial(null)}
+          onUpdated={fetchMaterials}
         />
       )}
     </div>

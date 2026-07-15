@@ -11,6 +11,7 @@ interface Props {
   onEdit: (material: SerializedMaterial) => void
   onDelete: (material: SerializedMaterial) => void
   onHistory: (material: SerializedMaterial) => void
+  onRowClick: (material: SerializedMaterial) => void
 }
 
 // ── Status badge ──────────────────────────────────────────────────────────────
@@ -41,7 +42,7 @@ function StatusBadge({ stock, threshold }: { stock: number; threshold: number | 
 
 const HEADERS = ['Tên nguyên liệu', 'Tồn kho (kg)', 'Ngưỡng tối thiểu (kg)', 'Trạng thái', 'Ghi chú', 'Actions']
 
-export default function MaterialsTable({ materials, onEdit, onDelete, onHistory }: Props) {
+export default function MaterialsTable({ materials, onEdit, onDelete, onHistory, onRowClick }: Props) {
   if (materials.length === 0) {
     return (
       <div className="bg-surface-container-lowest border-[0.5px] border-outline-variant rounded-lg">
@@ -78,6 +79,7 @@ export default function MaterialsTable({ materials, onEdit, onDelete, onHistory 
             return (
               <tr
                 key={mat.id}
+                onClick={() => onRowClick(mat)}
                 className="hover:bg-[#f0eded] cursor-pointer transition-colors duration-150"
               >
                 {/* Tên nguyên liệu */}
@@ -108,24 +110,24 @@ export default function MaterialsTable({ materials, onEdit, onDelete, onHistory 
                 </td>
 
                 {/* Actions */}
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => onHistory(mat)}
+                      onClick={(e) => { e.stopPropagation(); onHistory(mat) }}
                       title="Lịch sử xuất nhập"
                       className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-outline-variant text-secondary bg-transparent hover:bg-surface-container transition-colors"
                     >
                       <span className="material-symbols-outlined text-[16px]">history</span>
                     </button>
                     <button
-                      onClick={() => onEdit(mat)}
+                      onClick={(e) => { e.stopPropagation(); onEdit(mat) }}
                       title="Chỉnh sửa"
                       className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-primary text-primary bg-transparent hover:bg-surface-container transition-colors"
                     >
                       <span className="material-symbols-outlined text-[16px]">edit</span>
                     </button>
                     <button
-                      onClick={() => onDelete(mat)}
+                      onClick={(e) => { e.stopPropagation(); onDelete(mat) }}
                       title="Xóa"
                       className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-[#ba1a1a] text-[#ba1a1a] bg-transparent hover:bg-[#ba1a1a]/10 transition-colors"
                     >
