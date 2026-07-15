@@ -16,6 +16,8 @@ import {
 import type { SerializedProductionOrder } from '@/types'
 import AssignFromOrderModal from '@/components/schedule/AssignFromOrderModal'
 import { calculateOrderWeight } from '@/lib/calculations/orderWeight'
+import { calcOrderStatus } from '@/lib/orderStatus'
+import OrderStatusBadge from './OrderStatusBadge'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -346,7 +348,13 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
         )}
 
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-y-lg gap-x-xl">
-          <ViewField label="PI Number"    value={currentOrder.piNumber}                         mono />
+          <div className="flex flex-col gap-xs">
+            <dt className="text-label-sm font-inter font-medium text-secondary uppercase tracking-wider">PI Number</dt>
+            <dd className="flex items-center gap-2 text-type-mono font-mono text-on-surface">
+              <span>{currentOrder.piNumber}</span>
+              <OrderStatusBadge status={calcOrderStatus(currentOrder.assignments)} />
+            </dd>
+          </div>
           <ViewField label="Sub-line"     value={currentOrder.subLineIndex}                     />
           <ViewField label="Customer"     value={currentOrder.customer}                         />
           <ViewField label="Order Date"   value={formatDate(currentOrder.orderDate)}            />

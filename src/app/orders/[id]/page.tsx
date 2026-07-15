@@ -38,6 +38,7 @@ export default async function OrderDetailPage({ params }: Props) {
   try {
     const raw = await prisma.productionOrder.findUnique({
       where: { id: params.id },
+      include: { assignments: { select: { startDate: true, endDate: true } } },
     })
 
     if (!raw) {
@@ -54,6 +55,10 @@ export default async function OrderDetailPage({ params }: Props) {
       pieceLength: raw.pieceLength != null ? raw.pieceLength.toString() : null,
       qtySqm:         raw.qtySqm         != null ? raw.qtySqm.toString()         : null,
       totalWeightKgs: raw.totalWeightKgs != null ? raw.totalWeightKgs.toString() : null,
+      assignments: raw.assignments.map(a => ({
+        startDate: a.startDate.toISOString(),
+        endDate: a.endDate.toISOString(),
+      })),
     }
   } catch (err) {
     throw err

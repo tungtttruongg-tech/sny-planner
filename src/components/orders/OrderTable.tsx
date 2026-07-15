@@ -8,6 +8,8 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import type { SerializedProductionOrder } from '@/types'
+import { OrderStatus, calcOrderStatus } from '@/lib/orderStatus'
+import OrderStatusBadge from './OrderStatusBadge'
 
 interface OrderTableProps {
   orders: SerializedProductionOrder[]
@@ -42,22 +44,62 @@ const COLOR_MAP: Record<string, string> = {
 export default function OrderTable({ orders }: OrderTableProps) {
   const router = useRouter()
   const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'ALL' | OrderStatus>('ALL')
+
+  const ordersWithStatus = useMemo(() => {
+    return orders.map(o => ({
+      ...o,
+      calculatedStatus: calcOrderStatus(o.assignments),
+    }))
+  }, [orders])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return orders
-    return orders.filter(
+    let result = ordersWithStatus
+
+    if (statusFilter !== 'ALL') {
+      result = result.filter(o => o.calculatedStatus === statusFilter)
+    }
+
+    if (!q) return result
+    return result.filter(
       (o) =>
         o.piNumber.toLowerCase().includes(q) ||
         o.customer.toLowerCase().includes(q),
     )
-  }, [orders, query])
+  }, [ordersWithStatus, query, statusFilter])
 
   return (
     <div className="space-y-md">
 
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2 border-b border-outline-variant pb-2">
+        {(['ALL', 'PENDING', 'SCHEDULED', 'RUNNING', 'DONE'] as const).map((tab) => {
+          const isActive = statusFilter === tab
+          const label = 
+            tab === 'ALL' ? 'Tất cả' :
+            tab === 'PENDING' ? 'Chưa lên lịch' :
+            tab === 'SCHEDULED' ? 'Đã lên lịch' :
+            tab === 'RUNNING' ? 'Đang sản xuất' : 'Hoàn thành'
+            
+          return (
+            <button
+              key={tab}
+              onClick={() => setStatusFilter(tab)}
+              className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors border-b-2 -mb-[9px] ${
+                isActive 
+                  ? 'border-primary text-primary bg-surface-container' 
+                  : 'border-transparent text-secondary hover:text-on-surface hover:bg-surface-container-lowest'
+              }`}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </div>
+
       {/* Search + count row */}
-      <div className="flex items-center gap-md">
+      <div className="flex items-center gap-md pt-2">
         {/* Search input */}
         <div className="relative flex-1 max-w-md">
           <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-outline">
@@ -106,7 +148,7 @@ export default function OrderTable({ orders }: OrderTableProps) {
             <table className="w-full">
               <thead>
                 <tr className="bg-surface-container border-b border-[0.5px] border-outline-variant">
-                  {['PI Number', 'Customer', 'Order Date', 'Width (m)', 'Length (m)', 'GSM', 'Color', ''].map((h) => (
+                  {['PI Number', 'Status', 'Customer', 'Order Date', 'Width (m)', 'Length (m)', 'GSM', 'Color', ''].map((h) => (
                     <th
                       key={h}
                       className={`px-md py-sm text-left text-label-sm font-inter font-medium text-secondary uppercase tracking-widest ${
@@ -162,6 +204,11 @@ export default function OrderTable({ orders }: OrderTableProps) {
                             </span>
                           )}
                         </div>
+                      </td>
+
+                      {/* Status Badge */}
+                      <td className="px-md py-sm whitespace-nowrap">
+                        <OrderStatusBadge status={order.calculatedStatus} />
                       </td>
 
                       {/* Customer */}

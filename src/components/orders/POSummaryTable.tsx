@@ -7,6 +7,8 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import type { SerializedProductionOrder } from '@/types'
+import { OrderStatus, calcOrderStatus } from '@/lib/orderStatus'
+import OrderStatusBadge from './OrderStatusBadge'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -17,6 +19,7 @@ interface PIGroup {
   subLines: SerializedProductionOrder[]
   totalQtySqm: number | null
   totalWeightKgs: number | null
+  status: OrderStatus
 }
 
 interface Props {
@@ -56,7 +59,10 @@ function groupOrders(orders: SerializedProductionOrder[]): PIGroup[] {
       }
     }
 
-    groups.push({ piNumber, customers, orderDate, subLines, totalQtySqm, totalWeightKgs })
+    const allAssignments = subLines.flatMap(s => s.assignments || [])
+    const status = calcOrderStatus(allAssignments)
+
+    groups.push({ piNumber, customers, orderDate, subLines, totalQtySqm, totalWeightKgs, status })
   }
 
   // Sort groups by most recent orderDate descending
@@ -321,10 +327,11 @@ export default function POSummaryTable({ orders }: Props) {
                   </span>
 
                   {/* PI Number + optional multi-customer warning */}
-                  <span className="flex items-center gap-1 min-w-[120px]">
+                  <span className="flex items-center gap-2 min-w-[120px]">
                     <span className="font-mono font-semibold text-sm text-primary">
                       {group.piNumber}
                     </span>
+                    <OrderStatusBadge status={group.status} />
                     {group.customers.length > 1 && (
                       <span
                         title="PI Number này có nhiều customer khác nhau — kiểm tra lại dữ liệu"

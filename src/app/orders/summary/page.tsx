@@ -23,6 +23,7 @@ export default async function POSummaryPage() {
   try {
     const raw = await prisma.productionOrder.findMany({
       orderBy: [{ piNumber: 'asc' }, { subLineIndex: 'asc' }],
+      include: { assignments: { select: { startDate: true, endDate: true } } },
     })
 
     orders = raw.map((o) => ({
@@ -35,6 +36,10 @@ export default async function POSummaryPage() {
       pieceLength:   o.pieceLength   != null ? o.pieceLength.toFixed(2)   : null,
       qtySqm:        o.qtySqm        != null ? o.qtySqm.toFixed(2)        : null,
       totalWeightKgs: o.totalWeightKgs != null ? o.totalWeightKgs.toFixed(2) : null,
+      assignments: o.assignments.map(a => ({
+        startDate: a.startDate.toISOString(),
+        endDate: a.endDate.toISOString(),
+      })),
     })) as SerializedProductionOrder[]
   } catch (err) {
     console.error('[PO_SUMMARY_PAGE]', err)

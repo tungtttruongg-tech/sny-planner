@@ -18,18 +18,52 @@ export type ProductionOrder = Prisma.ProductionOrderGetPayload<object>
  *   - Date fields → ISO string
  *   - Prisma.Decimal (uvPct) → string | null  (Decimal serialises as string over JSON)
  */
-export type SerializedProductionOrder = Omit<
-  ProductionOrder,
-  'orderDate' | 'createdAt' | 'updatedAt' | 'uvPct' | 'rollLength' | 'pieceLength' | 'qtySqm' | 'totalWeightKgs'
-> & {
+export interface SerializedProductionOrder {
+  id: string
+  piNumber: string
+  subLineIndex: number
+  customer: string
   orderDate: string
-  createdAt: string
-  updatedAt: string
+
+  widthM: number
+  lengthM: number
+  gsm: number
+  color: string
+  mbCode: string | null
+
+  qty: number | null
   uvPct: string | null
+  frFlag: boolean
+  description: string | null
+  remark: string | null
+
+  meshType: string | null
+  needleCount: number | null
+  beamCount: number | null
+
+  orderType: string
   rollLength: string | null
   pieceLength: string | null
+
+  hasEyelet: boolean
+  eyeletColor: string | null
+
   qtySqm: string | null
   totalWeightKgs: string | null
+
+  status: string
+  dataSource: string
+
+  createdAt: string
+  updatedAt: string
+
+  eyeletLines: number | null
+  eyeletSpec: string | null
+
+  assignments?: {
+    startDate: string
+    endDate: string
+  }[]
 }
 
 /**

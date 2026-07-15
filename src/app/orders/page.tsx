@@ -42,6 +42,7 @@ export default async function OrdersPage() {
   try {
     const raw = await prisma.productionOrder.findMany({
       orderBy: { orderDate: 'desc' },
+      include: { assignments: { select: { startDate: true, endDate: true } } },
     })
 
     orders = raw.map((o) => ({
@@ -54,6 +55,10 @@ export default async function OrdersPage() {
       pieceLength: o.pieceLength != null ? o.pieceLength.toString() : null,
       qtySqm:         o.qtySqm         != null ? o.qtySqm.toString()         : null,
       totalWeightKgs: o.totalWeightKgs != null ? o.totalWeightKgs.toString() : null,
+      assignments: o.assignments.map(a => ({
+        startDate: a.startDate.toISOString(),
+        endDate: a.endDate.toISOString(),
+      })),
     }))
   } catch (err) {
     console.error('[OrdersPage] DB fetch failed:', err)

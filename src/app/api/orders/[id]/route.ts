@@ -23,7 +23,10 @@ export async function GET(
   const id = getId(context)
 
   try {
-    const order = await prisma.productionOrder.findUnique({ where: { id } })
+    const order = await prisma.productionOrder.findUnique({ 
+      where: { id },
+      include: { assignments: { select: { startDate: true, endDate: true } } },
+    })
 
     if (!order) {
       return NextResponse.json(
