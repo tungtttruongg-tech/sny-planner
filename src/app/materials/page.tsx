@@ -164,6 +164,14 @@ export default function MaterialsPage() {
             Tải mẫu Dệt
           </button>
           <button
+            id="btn-download-nvl-template"
+            onClick={() => window.location.href = '/api/materials/nvl-template'}
+            className="inline-flex items-center justify-center gap-2 border border-outline bg-surface hover:bg-surface-container text-on-surface text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">download</span>
+            Tải mẫu NVL
+          </button>
+          <button
             id="btn-import-material-report"
             onClick={() => setShowImportModal(true)}
             className="inline-flex items-center justify-center gap-2 border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"

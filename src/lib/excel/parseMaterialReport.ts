@@ -1,6 +1,6 @@
 // src/lib/excel/parseMaterialReport.ts
 // Server-only utility — parses SNY's daily HDPE material report (.xlsx)
-// Returns ParsedMaterialRow[] for each material with non-zero activity.
+// Returns ParsedMaterialRow[] for each material found (including those with lastStock=0).
 //
 // Excel structure (SNY daily HDPE report):
 //   Section 1: HDPE (raw plastic) — material name in a single name column
@@ -117,7 +117,7 @@ export function parseMaterialReport(buffer: Buffer): ParsedMaterialRow[] {
     // Skip empty rows
     if (!row || row.every((c) => c === '' || c == null)) continue
 
-    // Extract numeric values first — if lastStock column is empty, skip
+    // Extract numeric values first
     const lastStock = colLastStock >= 0 ? toNum(row[colLastStock]) : 0
 
     // Extract material name from non-numeric columns before colFirstStock
@@ -150,12 +150,6 @@ export function parseMaterialReport(buffer: Buffer): ParsedMaterialRow[] {
     const outReject  = colReject     >= 0 ? toNum(row[colReject])     : 0
     const outUsing   = colOutUsing   >= 0 ? toNum(row[colOutUsing])   : 0
 
-    // Skip rows with zero activity AND zero stock (likely blank filler rows)
-    if (
-      firstStock === 0 && inQty === 0 && outBroken === 0 &&
-      outTape === 0 && outReject === 0 && outUsing === 0 && lastStock === 0
-    )
-      continue
 
     result.push({
       materialName,
