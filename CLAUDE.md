@@ -3,7 +3,8 @@
 > READ THIS ENTIRE FILE before generating any code.
 > If context in this file conflicts with your judgment → this file wins.
 > Last updated: 15/07/2026
-> Last sprint DONE: AssignModal Sub-line Detail — dropdown + detail panel per sub-line ✅
+> Last sprint DONE: Order Status Badge + Filter ✅
+> Next sprint pending: mbCode per-line + frPct Decimal
 
 ---
 
@@ -24,8 +25,8 @@ Replace 4 disconnected Excel files with 1 system.
 Flow: Sales Order → Production Order → Machine Schedule → Material Planning.
 
 **Phase 1 (DONE):** Endusers enter data into tool. Stop using Excel.
-**Last sprint DONE:** AssignModal Sub-line Detail — dropdown đổi từ PI-level sang per-sub-line, detail panel hiện sau khi chọn, AssignFromOrderModal mở rộng order info panel.
-**Next sprints (Must have trước G3 24-27/7):** mbCode per-line · frPct thay frFlag · Status badge + filter.
+**Last sprint DONE:** Order Status Badge + Filter ✅
+**Next sprints (Must have trước G3 24-27/7):** mbCode per-line · frPct Decimal.
 **Phase 2 (later):** AI automation, auto-scheduling, formula calculations, alerts.
 
 ---
@@ -158,21 +159,44 @@ Flow: Sales Order → Production Order → Machine Schedule → Material Plannin
   Giữ lại trong repo làm audit trail. **KHÔNG chạy lại** trừ khi cần reset.
 
 ### AssignModal Sub-line Detail ✅
-- `src/app/schedule/actions.ts` — thêm `subLineIndex`, `widthM`, `gsm`, `color`,
-  `meshType`, `lengthM`, `qty` vào select. Sort dùng JS `localeCompare` với
-  `{ numeric: true }` thay vì Prisma `orderBy` (Prisma sort lexicographic,
-  không có numeric equivalent). **Không dùng Prisma orderBy cho query này.**
-- `src/components/schedule/AssignModal.tsx` — dropdown đổi từ PI-level sang
-  sub-line-level. Order type inferred từ server action return type (type-safe).
-  Format label: `"{piNumber} · Dòng {subLineIndex+1} — {widthM}m · {color} · {gsm}gsm[ · {meshType}]"`
-  meshType chỉ hiện nếu có giá trị (không hiện null/undefined).
-  Detail panel `SubLineDetailPanel` hiện ngay sau khi chọn sub-line:
-  piNumber, subLineIndex, customer, widthM, gsm, color, meshType, lengthM, qty.
+- `src/app/schedule/actions.ts` — thêm subLineIndex, widthM, gsm, color,
+  meshType, lengthM, qty vào select. Sort dùng JS localeCompare numeric
+  (KHÔNG dùng Prisma orderBy — Prisma sort lexicographic, không có numeric
+  equivalent). Format label: "{piNumber} · Dòng {n} — {widthM}m · {color}
+  · {gsm}gsm · {meshType}". meshType chỉ hiện nếu có giá trị.
+- `src/components/schedule/AssignModal.tsx` — dropdown sub-line level,
+  detail panel sau khi chọn (piNumber, subLineIndex, customer, widthM,
+  gsm, color, meshType, lengthM, qty)
 - `src/components/schedule/AssignFromOrderModal.tsx` — mở rộng order
-  info panel từ 3 fields lên 7 fields (piNumber, subLineIndex, customer,
-  widthM, gsm, color, meshType, lengthM, qty).
-- API `/api/assignments` và `/api/orders` **KHÔNG thay đổi** — đã đúng từ
-  trước (`orderId` là id của sub-line cụ thể, không phải PI-level).
+  info panel từ 3 lên 7 fields
+- API `/api/assignments` và `/api/orders` KHÔNG thay đổi
+
+### Order Status Badge + Filter ✅
+- `src/lib/orderStatus.ts` — utility calcOrderStatus() + STATUS_CONFIG.
+  Logic tính từ MachineAssignment, so sánh với today UTC+7.
+  KHÔNG có field status trong DB — tính runtime.
+  Status priority: RUNNING > SCHEDULED > DONE > PENDING
+  ```
+  PENDING    = không có assignment nào
+  SCHEDULED  = có assignment, startDate > today (UTC+7)
+  RUNNING    = có assignment, startDate <= today <= endDate
+  DONE       = tất cả assignments có endDate < today
+  ```
+- `src/components/orders/OrderStatusBadge.tsx` — pill badge component,
+  màu theo STATUS_CONFIG: gray/blue/green/navy
+- `src/types/index.ts` — thêm assignments?: {startDate,endDate}[] vào
+  SerializedProductionOrder
+- `src/app/orders/page.tsx` — include assignments trong Prisma query
+- `src/app/orders/summary/page.tsx` — include assignments, badge cạnh
+  PI Number header (aggregate status mạnh nhất của group)
+- `src/app/orders/[id]/page.tsx` — include assignments
+- `src/app/api/orders/[id]/route.ts` — GET handler include assignments
+  (EXCEPTION từ protected rule — chỉ thêm include, không đổi logic)
+- `src/components/orders/OrderTable.tsx` — filter tabs client-side
+  (Tất cả / Chưa lên lịch / Đã lên lịch / Đang sản xuất / Hoàn thành),
+  badge cạnh PI Number
+- `src/components/orders/POSummaryTable.tsx` — badge aggregate status
+- `src/components/orders/OrderDetail.tsx` — badge cạnh PI Number đầu trang
 
 ### Order type variants ✅
 - All order forms support 3 order types with conditional fields:
@@ -487,14 +511,15 @@ sny-planner/
 | PO Summary + Output Input | ✅ Done |
 | Knitting Daily Output | ✅ Done |
 | AssignModal Sub-line Detail | ✅ Done |
+| Order Status Badge + Filter | ✅ Done |
 
 ## 9. Sprints pending — Must have trước Gate G3 (24–27/7)
 
 | # | Sprint | Mô tả | Status |
 |---|---|---|---|
 | 1 | mbCode per-line | Chuyển `mbCode` từ shared section xuống per-line trong `MultiLineOrderForm` | ⏳ Pending |
-| 2 | frPct thay frFlag | Thêm `frPct` (Decimal) thay `frFlag` (Boolean) — nhập % FR thay vì checkbox | ⏳ Pending |
-| 3 | Status badge + filter | Badge màu PENDING/SCHEDULED/RUNNING/DONE trên Order List và PO Summary, filter theo status | ⏳ Pending |
+| 2 | frPct (Decimal) thay frFlag (Boolean) | Nhập % FR thay vì checkbox | ⏳ Pending |
+| 3 | Xóa data test | Xóa data test trước UAT: TEST-DUP-01, PI-2026-TEST*, PI-2026-TEST-1* | ⏳ Pending |
 
 ## 9b. Backlog (sau G3 hoặc chờ feedback)
 
@@ -540,6 +565,10 @@ sny-planner/
 1. Spec is ambiguous
 2. Need new npm package — list URL first
 3. About to modify existing API routes in `src/app/api/orders/`
+   EXCEPTION đã xảy ra: 2 lần đã sửa file `api/orders/[id]/route.ts` với lý do hợp lệ:
+   1. Sprint eyeletLines/eyeletSpec: thêm 2 dòng map field vào updateData
+   2. Sprint status badge: GET handler thêm include assignments
+   Nguyên tắc: chỉ được sửa khi additive (thêm field), không được đổi logic
 4. Any `rm`, `delete`, `drop`, `truncate` command
 5. Test fails twice
 
