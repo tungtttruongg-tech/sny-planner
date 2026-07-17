@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
   // ── 3. Destructure shared fields ──────────────────────────────────────────
   // gsm / meshType / needleCount / beamCount intentionally NOT here — they are per-line
-  const { piNumber, customer, orderDate, mbCode, description, remark, lines } = parsed.data
+  const { piNumber, customer, orderDate, deliveryDate, containerSize, description, remark, lines } = parsed.data
 
   // ── 4. Derive effective lengthM for each line ──────────────────────────────
   // For "rolls" and "pieces", lengthM = calculated totalMeters so the field is
@@ -102,12 +102,17 @@ export async function POST(req: NextRequest) {
         ...(line.eyeletLines != null && { eyeletLines: line.eyeletLines }),
         ...(line.eyeletSpec  && { eyeletSpec:  line.eyeletSpec }),
         // Shared optional fields
-        ...(mbCode      && { mbCode }),
+        ...(deliveryDate && { deliveryDate: new Date(deliveryDate) }),
+        ...(containerSize && { containerSize }),
         ...(description && { description }),
         ...(remark      && { remark }),
         // Per-line optional fields
         ...(line.uvPct  != null && { uvPct: line.uvPct }),
-        frFlag:    line.frFlag ?? false,
+        frFlag:    line.frPct != null ? line.frPct > 0 : (line.frFlag ?? false),
+        ...(line.frPct  != null && { frPct: line.frPct }),
+        requiresPacking: line.requiresPacking ?? false,
+        ...(line.lineNote && { lineNote: line.lineNote }),
+        ...(line.mbCode && { mbCode: line.mbCode }),
         hasEyelet: line.hasEyelet ?? false,
         ...(line.eyeletColor && { eyeletColor: line.eyeletColor }),
         // Calculated weight (Case A formula)

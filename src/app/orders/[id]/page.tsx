@@ -55,6 +55,8 @@ export default async function OrderDetailPage({ params }: Props) {
       pieceLength: raw.pieceLength != null ? raw.pieceLength.toString() : null,
       qtySqm:         raw.qtySqm         != null ? raw.qtySqm.toString()         : null,
       totalWeightKgs: raw.totalWeightKgs != null ? raw.totalWeightKgs.toString() : null,
+      deliveryDate: raw.deliveryDate != null ? raw.deliveryDate.toISOString() : null,
+      frPct: raw.frPct != null ? raw.frPct.toString() : null,
       assignments: raw.assignments.map(a => ({
         startDate: a.startDate.toISOString(),
         endDate: a.endDate.toISOString(),

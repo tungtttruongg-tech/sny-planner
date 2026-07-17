@@ -134,13 +134,5 @@ export function parseKnittingReport(buffer: Buffer): KnittingDayData[] {
     }
   }
 
-  // Debug log — remove after Phase C verification
-  console.log('[KNITTING PARSER] Total records found:', results.length)
-  console.log('[KNITTING PARSER] Sample:', results.slice(0, 3).map((r) => ({
-    date: r.reportDate.toISOString().slice(0, 10),
-    machineId: r.machineId,
-    dailyMeters: r.dailyMeters,
-  })))
-
   return results
 }

@@ -16,6 +16,8 @@ interface PIGroup {
   piNumber: string
   customers: string[]     // deduplicated; usually 1
   orderDate: string       // ISO string of the most recent sub-line's orderDate
+  deliveryDate: string | null
+  containerSize: string | null
   subLines: SerializedProductionOrder[]
   totalQtySqm: number | null
   totalWeightKgs: number | null
@@ -61,8 +63,11 @@ function groupOrders(orders: SerializedProductionOrder[]): PIGroup[] {
 
     const allAssignments = subLines.flatMap(s => s.assignments || [])
     const status = calcOrderStatus(allAssignments)
+    
+    const deliveryDate = subLines[0].deliveryDate
+    const containerSize = subLines[0].containerSize
 
-    groups.push({ piNumber, customers, orderDate, subLines, totalQtySqm, totalWeightKgs, status })
+    groups.push({ piNumber, customers, orderDate, deliveryDate, containerSize, subLines, totalQtySqm, totalWeightKgs, status })
   }
 
   // Sort groups by most recent orderDate descending
@@ -97,6 +102,7 @@ function SubLineTable({
   subLines: SerializedProductionOrder[]
   progress: ProgressMap
 }) {
+  const showPacking = subLines.some(s => s.requiresPacking)
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs font-inter border-collapse">
@@ -115,10 +121,13 @@ function SubLineTable({
             <th className="px-3 py-2 text-right font-medium">kg (tổng)</th>
             <th className="px-3 py-2 text-left font-medium">MB Code</th>
             <th className="px-3 py-2 text-left font-medium">Lưới</th>
+            <th className="px-3 py-2 text-right font-medium">FR%</th>
             <th className="px-3 py-2 text-right font-medium">Kim</th>
             <th className="px-3 py-2 text-right font-medium">Dàn</th>
             <th className="px-3 py-2 text-center font-medium">Eyelet</th>
             <th className="px-3 py-2 text-left font-medium">Màu eyelet</th>
+            {showPacking && <th className="px-3 py-2 text-center font-medium">Đóng gói</th>}
+            <th className="px-3 py-2 text-left font-medium">Ghi chú</th>
             <th className="px-3 py-2 text-left font-medium">Đã SX (m)</th>
             <th className="px-3 py-2 text-right font-medium">Còn lại (m)</th>
             <th className="px-3 py-2 text-left font-medium">Nguồn</th>
@@ -155,6 +164,7 @@ function SubLineTable({
               </td>
               <td className="px-3 py-2 font-mono text-secondary">{s.mbCode ?? '—'}</td>
               <td className="px-3 py-2 text-secondary">{s.meshType ?? '—'}</td>
+              <td className="px-3 py-2 font-mono text-right text-secondary">{s.frPct != null ? s.frPct : (s.frFlag ? 'Có' : '—')}</td>
               <td className="px-3 py-2 font-mono text-right text-secondary">
                 {s.needleCount != null ? s.needleCount : '—'}
               </td>
@@ -178,6 +188,12 @@ function SubLineTable({
                 })()}
               </td>
               <td className="px-3 py-2 text-secondary">{s.eyeletColor ?? '—'}</td>
+              {showPacking && (
+                <td className="px-3 py-2 text-center">
+                  {s.requiresPacking ? <span className="material-symbols-outlined text-[16px] text-primary">check</span> : <span className="text-outline">—</span>}
+                </td>
+              )}
+              <td className="px-3 py-2 text-secondary max-w-[150px] truncate" title={s.lineNote ?? undefined}>{s.lineNote ?? '—'}</td>
               <td className="px-3 py-2 font-mono text-primary font-semibold">
                 {progress[s.id] != null
                   ? `${progress[s.id].producedMeters.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} m`
@@ -366,11 +382,26 @@ export default function POSummaryTable({ orders }: Props) {
                   )}
 
                   {/* Order date of most recent sub-line */}
-                  <span className="text-xs font-inter text-outline shrink-0 hidden md:inline">
+                  <span className="text-xs font-inter text-outline shrink-0 hidden md:inline ml-auto">
                     {new Date(group.orderDate).toLocaleDateString('vi-VN', {
                       day: '2-digit', month: '2-digit', year: 'numeric',
                     })}
                   </span>
+                  
+                  {/* Delivery Date */}
+                  {group.deliveryDate && (
+                    <span className="text-xs font-inter text-outline shrink-0 hidden md:inline" title="Ngày giao hàng">
+                      Giao: {new Date(group.deliveryDate).toLocaleDateString('vi-VN', {
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                      })}
+                    </span>
+                  )}
+                  {/* Container Size */}
+                  {group.containerSize && (
+                    <span className="text-[10px] font-inter text-secondary shrink-0 hidden md:inline border-[0.5px] border-outline-variant px-1.5 py-0.5 rounded bg-surface-container">
+                      {group.containerSize}
+                    </span>
+                  )}
                 </button>
 
                 {/* Expanded sub-lines */}

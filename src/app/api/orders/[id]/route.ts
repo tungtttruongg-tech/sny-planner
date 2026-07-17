@@ -94,9 +94,19 @@ export async function PATCH(
   // Optional nullable fields — undefined = not sent (skip), null = clear value
   if ('qty' in data)         updateData.qty = data.qty
   if ('uvPct' in data)       updateData.uvPct = data.uvPct
-  if (data.frFlag !== undefined)       updateData.frFlag = data.frFlag
+  if ('frPct' in data) {
+    updateData.frPct = data.frPct
+    updateData.frFlag = data.frPct != null ? data.frPct > 0 : false
+  } else if (data.frFlag !== undefined) {
+    updateData.frFlag = data.frFlag
+  }
   if ('description' in data) updateData.description = data.description
   if ('remark' in data)      updateData.remark = data.remark
+  if ('lineNote' in data)    updateData.lineNote = data.lineNote
+  if (data.requiresPacking !== undefined) updateData.requiresPacking = data.requiresPacking
+  if ('deliveryDate' in data) updateData.deliveryDate = data.deliveryDate ? new Date(data.deliveryDate) : null
+  if ('containerSize' in data) updateData.containerSize = data.containerSize
+
   // Technical specs
   if ('meshType' in data)    updateData.meshType    = data.meshType
   if ('needleCount' in data) updateData.needleCount = data.needleCount

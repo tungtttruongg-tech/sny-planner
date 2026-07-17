@@ -34,8 +34,13 @@ export interface SerializedProductionOrder {
   qty: number | null
   uvPct: string | null
   frFlag: boolean
+  frPct: string | null
   description: string | null
   remark: string | null
+  lineNote: string | null
+  requiresPacking: boolean
+  deliveryDate: string | null
+  containerSize: string | null
 
   meshType: string | null
   needleCount: number | null

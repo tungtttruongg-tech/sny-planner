@@ -55,6 +55,8 @@ export default async function OrdersPage() {
       pieceLength: o.pieceLength != null ? o.pieceLength.toString() : null,
       qtySqm:         o.qtySqm         != null ? o.qtySqm.toString()         : null,
       totalWeightKgs: o.totalWeightKgs != null ? o.totalWeightKgs.toString() : null,
+      deliveryDate: o.deliveryDate != null ? o.deliveryDate.toISOString() : null,
+      frPct: o.frPct != null ? o.frPct.toString() : null,
       assignments: o.assignments.map(a => ({
         startDate: a.startDate.toISOString(),
         endDate: a.endDate.toISOString(),

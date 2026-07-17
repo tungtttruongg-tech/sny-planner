@@ -30,7 +30,10 @@ interface LineItem {
   rollLength: string
   pieceLength: string
   uvPct: string
-  frFlag: boolean
+  frPct: string
+  mbCode: string
+  requiresPacking: boolean
+  lineNote: string
   hasEyelet: boolean
   eyeletColor: string
   meshType: string    // per-line (was shared)
@@ -113,7 +116,10 @@ function newLine(): LineItem {
     rollLength: '',
     pieceLength: '',
     uvPct: '',
-    frFlag: false,
+    frPct: '',
+    mbCode: '',
+    requiresPacking: false,
+    lineNote: '',
     hasEyelet: false,
     eyeletColor: '',
     meshType: '',
@@ -143,7 +149,8 @@ export default function MultiLineOrderForm() {
   const [piNumber,    setPiNumber]    = useState('')
   const [customer,    setCustomer]    = useState('')
   const [orderDate,   setOrderDate]   = useState('')
-  const [mbCode,      setMbCode]      = useState('')
+  const [deliveryDate,setDeliveryDate]= useState('')
+  const [containerSize,setContainerSize]= useState('')
   const [description, setDescription] = useState('')
   const [remark,      setRemark]      = useState('')
 
@@ -221,7 +228,8 @@ export default function MultiLineOrderForm() {
       piNumber:    piNumber.trim(),
       customer:    customer.trim(),
       orderDate,
-      mbCode:      mbCode.trim()      || undefined,
+      deliveryDate: deliveryDate || undefined,
+      containerSize: containerSize.trim() || undefined,
       description: description.trim() || undefined,
       remark:      remark.trim()      || undefined,
       // Per-line fields (gsm, meshType, needleCount, beamCount now inside each line)
@@ -242,7 +250,10 @@ export default function MultiLineOrderForm() {
           pieceLength: parseFloat(line.pieceLength),
         }),
         uvPct:      line.uvPct ? parseFloat(line.uvPct) : undefined,
-        frFlag:     line.frFlag,
+        frPct:      line.frPct ? parseFloat(line.frPct) : undefined,
+        mbCode:     line.mbCode.trim() || undefined,
+        requiresPacking: line.requiresPacking,
+        lineNote:   line.lineNote.trim() || undefined,
         hasEyelet:  line.hasEyelet,
         eyeletColor: line.hasEyelet && line.eyeletColor.trim() ? line.eyeletColor.trim() : undefined,
         meshType:    line.meshType.trim()    || undefined,
@@ -334,16 +345,28 @@ export default function MultiLineOrderForm() {
             {fieldErrors.orderDate && <p className="text-xs text-error mt-1">{fieldErrors.orderDate}</p>}
           </div>
 
-          {/* MB Code */}
+          {/* Delivery Date */}
           <div>
-            <Label>Mã màu (MB Code)</Label>
+            <Label>Ngày giao hàng</Label>
             <input
-              id="ml-mbCode"
-              type="text"
-              placeholder="e.g. MYD4501A"
-              value={mbCode}
-              onChange={(e) => setMbCode(e.target.value)}
+              id="ml-deliveryDate"
+              type="date"
+              value={deliveryDate}
+              onChange={(e) => setDeliveryDate(e.target.value)}
               className={monoInputCls()}
+            />
+          </div>
+
+          {/* Container Size */}
+          <div>
+            <Label>Container size</Label>
+            <input
+              id="ml-containerSize"
+              type="text"
+              placeholder="e.g. 40HQ x 1"
+              value={containerSize}
+              onChange={(e) => setContainerSize(e.target.value)}
+              className={inputCls()}
             />
           </div>
 
@@ -622,18 +645,43 @@ export default function MultiLineOrderForm() {
                   />
                 </div>
 
-                {/* FR checkbox */}
+                {/* MB Code — per-line */}
+                <div>
+                  <Label>Mã màu (MB Code)</Label>
+                  <input
+                    id={`ml-line-${line.id}-mbCode`}
+                    type="text"
+                    placeholder="e.g. MYD4501A"
+                    value={line.mbCode}
+                    onChange={(e) => updateLine(line.id, { mbCode: e.target.value })}
+                    className={monoInputCls()}
+                  />
+                </div>
+
+                {/* FR% — replaces FR checkbox */}
+                <div>
+                  <Label>FR %</Label>
+                  <input
+                    id={`ml-line-${line.id}-frPct`}
+                    type="number" min={0} max={100} step={0.01}
+                    placeholder="e.g. 6.5"
+                    value={line.frPct}
+                    onChange={(e) => updateLine(line.id, { frPct: e.target.value })}
+                    className={monoInputCls()}
+                  />
+                </div>
+                {/* Requires Packing */}
                 <div className="flex flex-col justify-end pb-1">
                   <div className="flex items-center gap-2 py-2">
                     <input
-                      id={`ml-line-${line.id}-frFlag`}
+                      id={`ml-line-${line.id}-requiresPacking`}
                       type="checkbox"
-                      checked={line.frFlag}
-                      onChange={(e) => updateLine(line.id, { frFlag: e.target.checked })}
+                      checked={line.requiresPacking}
+                      onChange={(e) => updateLine(line.id, { requiresPacking: e.target.checked })}
                       className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
                     />
-                    <label htmlFor={`ml-line-${line.id}-frFlag`} className="text-sm font-noto text-on-surface cursor-pointer select-none">
-                      FR treatment
+                    <label htmlFor={`ml-line-${line.id}-requiresPacking`} className="text-sm font-noto text-on-surface cursor-pointer select-none">
+                      Cần đóng gói
                     </label>
                   </div>
                 </div>
@@ -691,6 +739,18 @@ export default function MultiLineOrderForm() {
                     placeholder="VD: 5cm interval, single band both edges"
                     value={line.eyeletSpec}
                     onChange={(e) => updateLine(line.id, { eyeletSpec: e.target.value })}
+                    className={inputCls()}
+                  />
+                </div>
+                {/* Line Note */}
+                <div className="sm:col-span-2">
+                  <Label>Ghi chú dòng</Label>
+                  <input
+                    id={`ml-line-${line.id}-lineNote`}
+                    type="text"
+                    placeholder="VD: Màu cần confirm với khách"
+                    value={line.lineNote}
+                    onChange={(e) => updateLine(line.id, { lineNote: e.target.value })}
                     className={inputCls()}
                   />
                 </div>

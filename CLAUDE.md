@@ -2,9 +2,9 @@
 > Ground truth for all AI coding agents (Antigravity, Cursor).
 > READ THIS ENTIRE FILE before generating any code.
 > If context in this file conflicts with your judgment → this file wins.
-> Last updated: 15/07/2026
-> Last sprint DONE: Order Status Badge + Filter ✅
-> Next sprint pending: mbCode per-line + frPct Decimal
+> Last updated: 16/07/2026
+> Last sprint DONE: Materials parser fix (nhận NVL tồn = 0) + NVL template download ✅
+> Next sprint pending: mbCode per-line + frPct Decimal + 6 req mới từ KH
 
 ---
 
@@ -25,8 +25,8 @@ Replace 4 disconnected Excel files with 1 system.
 Flow: Sales Order → Production Order → Machine Schedule → Material Planning.
 
 **Phase 1 (DONE):** Endusers enter data into tool. Stop using Excel.
-**Last sprint DONE:** Order Status Badge + Filter ✅
-**Next sprints (Must have trước G3 24-27/7):** mbCode per-line · frPct Decimal.
+**Last sprint DONE:** Materials parser fix (nhận NVL tồn = 0) + NVL template download ✅
+**Next sprints (Must have trước G3 24-27/7):** mbCode per-line · frPct Decimal + 6 req mới từ KH.
 **Phase 2 (later):** AI automation, auto-scheduling, formula calculations, alerts.
 
 ---
@@ -197,6 +197,28 @@ Flow: Sales Order → Production Order → Machine Schedule → Material Plannin
   badge cạnh PI Number
 - `src/components/orders/POSummaryTable.tsx` — badge aggregate status
 - `src/components/orders/OrderDetail.tsx` — badge cạnh PI Number đầu trang
+
+### Materials Parser Fix + NVL Template ✅ (update 16/07/2026)
+- `src/lib/excel/parseMaterialReport.ts` — FIX: bỏ hoàn toàn điều kiện skip
+  khi tất cả cột = 0. Giờ chỉ skip khi: (1) dòng trống hoàn toàn,
+  (2) không có tên NVL, (3) dòng TOTAL/TỔNG/CỘNG.
+  NVL có LAST STOCK = 0 nhưng có tên → được giữ lại (NVL hết hàng vẫn
+  cần theo dõi trong hệ thống).
+- `public/templates/nvl-template.xlsx` — file template chuẩn 134 NVL,
+  sheet RAW_MATERIAL, header row 4: # | NHÓM | TÊN NGUYÊN LIỆU |
+  FISRT STOCK | IN | OUT USEING | LAST STOCK.
+  KHÔNG có dòng TOTAL ở cuối (parser sẽ đọc nhầm thành NVL).
+- `src/app/api/materials/nvl-template/route.ts` — GET handler trả về
+  file nvl-template.xlsx để download
+- `src/app/materials/page.tsx` — thêm button 'Tải mẫu NVL' cạnh
+  'Import báo cáo', style giống 'Tải mẫu Dệt'
+
+Note quan trọng về file template NVL:
+- File gốc SNY có 3 section khác nhau (HDPE/MB/KOREA) với column offset khác nhau
+- Template chuẩn hóa về 1 format duy nhất: tất cả NVL cùng 1 cấu trúc cột
+- MB LAST STOCK đọc từ col N (idx 13), KHÔNG phải col M (idx 12) — đây là
+  bug trong file gốc của SNY
+- Workflow: KH tải template → điền LAST STOCK → upload → Import báo cáo
 
 ### Order type variants ✅
 - All order forms support 3 order types with conditional fields:
@@ -512,6 +534,7 @@ sny-planner/
 | Knitting Daily Output | ✅ Done |
 | AssignModal Sub-line Detail | ✅ Done |
 | Order Status Badge + Filter | ✅ Done |
+| Materials parser fix + NVL template download | ✅ Done |
 
 ## 9. Sprints pending — Must have trước Gate G3 (24–27/7)
 
@@ -520,6 +543,16 @@ sny-planner/
 | 1 | mbCode per-line | Chuyển `mbCode` từ shared section xuống per-line trong `MultiLineOrderForm` | ⏳ Pending |
 | 2 | frPct (Decimal) thay frFlag (Boolean) | Nhập % FR thay vì checkbox | ⏳ Pending |
 | 3 | Xóa data test | Xóa data test trước UAT: TEST-DUP-01, PI-2026-TEST*, PI-2026-TEST-1* | ⏳ Pending |
+
+Req mới từ Dung/Loan (16/07/2026) — chưa build:
+1. Ghi chú per dòng hàng (`lineNote String?`) — Sprint A, nhỏ
+2. FR% như UV% (`frPct Decimal`, bắt buộc) — Sprint A, đã pending
+3. Checkbox đóng gói (`requiresPacking Boolean`) — Sprint A, nhỏ
+4. Bỏ mbCode khỏi shared section — Sprint A, đã pending
+5. Ngày giao hàng (`deliveryDate Date?`) — Sprint A, nhỏ
+6. Container size (`containerSize String?`) — Sprint A, nhỏ
+7. Customer Database + autocomplete — Sprint B riêng, sau G3
+8. Badge cảnh báo KH mới (phụ thuộc req 7) — Sprint B, sau G3
 
 ## 9b. Backlog (sau G3 hoặc chờ feedback)
 

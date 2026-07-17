@@ -26,8 +26,11 @@ export async function getUnassignedOrders() {
       lengthM: true,
       qty: true,
     },
-    // Sort: piNumber ASC → subLineIndex ASC so all sub-lines of a PI group together
-    orderBy: [{ piNumber: 'asc' }, { subLineIndex: 'asc' }],
+    // No Prisma orderBy — JS sort below handles numeric piNumber correctly
   })
-  return orders
+  // Numeric-aware sort: KTQ26-2 < KTQ26-10 (not string order 1, 10, 2, 20)
+  return orders.sort((a, b) =>
+    a.piNumber.localeCompare(b.piNumber, undefined, { numeric: true }) ||
+    a.subLineIndex - b.subLineIndex
+  )
 }

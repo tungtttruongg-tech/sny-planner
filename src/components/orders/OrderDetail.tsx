@@ -182,6 +182,11 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
       mbCode: currentOrder.mbCode ?? undefined,
       uvPct: currentOrder.uvPct != null ? parseFloat(currentOrder.uvPct) : null,
       frFlag: currentOrder.frFlag,
+      frPct: currentOrder.frPct != null ? parseFloat(currentOrder.frPct) : null,
+      requiresPacking: currentOrder.requiresPacking,
+      lineNote: currentOrder.lineNote ?? '',
+      deliveryDate: currentOrder.deliveryDate ? toDateInputValue(currentOrder.deliveryDate) : undefined,
+      containerSize: currentOrder.containerSize ?? '',
       description: currentOrder.description ?? '', remark: currentOrder.remark ?? '',
       meshType: currentOrder.meshType ?? '',
       needleCount: currentOrder.needleCount ?? undefined,
@@ -358,6 +363,12 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           <ViewField label="Sub-line"     value={currentOrder.subLineIndex}                     />
           <ViewField label="Customer"     value={currentOrder.customer}                         />
           <ViewField label="Order Date"   value={formatDate(currentOrder.orderDate)}            />
+          {currentOrder.deliveryDate && (
+            <ViewField label="Ngày giao hàng" value={formatDate(currentOrder.deliveryDate)} />
+          )}
+          {currentOrder.containerSize && (
+            <ViewField label="Container size" value={currentOrder.containerSize} />
+          )}
           <ViewField label="Width (m)"    value={Number(currentOrder.widthM).toFixed(1)}        mono />
           <ViewField label="Length (m)"   value={Number(currentOrder.lengthM).toLocaleString()} mono />
           <ViewField label="GSM"          value={currentOrder.gsm}                              mono />
@@ -410,7 +421,8 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
         </dl>
 
         {/* Optional fields */}
-        {(currentOrder.qty != null || currentOrder.uvPct != null || currentOrder.frFlag ||
+        {(currentOrder.qty != null || currentOrder.uvPct != null || currentOrder.frFlag || currentOrder.frPct != null ||
+          currentOrder.requiresPacking || currentOrder.lineNote ||
           currentOrder.description || currentOrder.remark ||
           currentOrder.meshType || currentOrder.needleCount != null || currentOrder.beamCount != null) && (
           <div className="border-t-[0.5px] border-outline-variant pt-lg">
@@ -422,11 +434,21 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
               {currentOrder.uvPct != null && (
                 <ViewField label="UV %" value={`${parseFloat(currentOrder.uvPct).toFixed(2)}%`} mono />
               )}
-              <ViewField label="FR Treatment" value={
-                currentOrder.frFlag
-                  ? <span className="text-[#92400e] font-medium font-inter text-label-md">Required</span>
-                  : <span className="text-outline font-inter text-label-md">Not required</span>
+              <ViewField label="FR %" value={
+                currentOrder.frPct != null
+                  ? <span className="font-mono text-on-surface font-semibold">{currentOrder.frPct} %</span>
+                  : currentOrder.frFlag
+                    ? <span className="text-[#92400e] font-medium font-inter text-label-md">Có (legacy)</span>
+                    : <span className="text-outline font-inter text-label-md">—</span>
               } />
+              {currentOrder.requiresPacking && (
+                <ViewField label="Đóng gói" value={
+                  <span className="text-primary font-medium font-inter text-label-md">Có</span>
+                } />
+              )}
+              {currentOrder.lineNote && (
+                <div className="sm:col-span-2"><ViewField label="Ghi chú dòng" value={currentOrder.lineNote} /></div>
+              )}
               {currentOrder.description && (
                 <div className="sm:col-span-2"><ViewField label="Description" value={currentOrder.description} /></div>
               )}
@@ -586,6 +608,12 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           <FormField label="Order Date"  required error={errors.orderDate?.message}>
             <input id="edit-orderDate" type="date" className={inputCls(false, !!errors.orderDate)} {...register('orderDate')} />
           </FormField>
+          <FormField label="Ngày giao hàng" error={errors.deliveryDate?.message}>
+            <input id="edit-deliveryDate" type="date" className={inputCls(false, !!errors.deliveryDate)} {...register('deliveryDate')} />
+          </FormField>
+          <FormField label="Container size" error={errors.containerSize?.message}>
+            <input id="edit-containerSize" type="text" className={inputCls(false, !!errors.containerSize)} {...register('containerSize')} />
+          </FormField>
           <FormField label="Width (m)"   required error={errors.widthM?.message}>
             <input id="edit-widthM" type="number" min={0.1} max={20} step={0.1} className={inputCls(true, !!errors.widthM)} {...register('widthM', { valueAsNumber: true })} />
           </FormField>
@@ -652,14 +680,24 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           <FormField label="Quantity (rolls)" error={errors.qty?.message}>
             <input id="edit-qty" type="number" min={1} step={1} className={inputCls(true, !!errors.qty)} {...register('qty', { setValueAs: (v: string) => (v === '' || v === null) ? null : Number(v) })} />
           </FormField>
-          <FormField label="UV %" error={errors.uvPct?.message} hint="0–100">
-            <input id="edit-uvPct" type="number" min={0} max={100} step={0.01} className={inputCls(true, !!errors.uvPct)} {...register('uvPct', { setValueAs: (v: string) => (v === '' || v === null) ? null : Number(v) })} />
+          <FormField label="UV %" error={errors.uvPct?.message}>
+            <input id="edit-uvPct" type="number" min={0} max={100} step={0.01} className={inputCls(true, !!errors.uvPct)} {...register('uvPct', { valueAsNumber: true })} />
           </FormField>
-          <div className="sm:col-span-2 flex items-center gap-sm">
-            <input id="edit-frFlag" type="checkbox" className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer" {...register('frFlag')} />
-            <label htmlFor="edit-frFlag" className="text-body-md font-noto text-on-surface cursor-pointer select-none">
-              Flame-Retardant (FR) treatment required
+          <FormField label="FR %" error={errors.frPct?.message}>
+            <input id="edit-frPct" type="number" min={0} max={100} step={0.01} className={inputCls(true, !!errors.frPct)} {...register('frPct', { valueAsNumber: true })} />
+          </FormField>
+          <div className="flex flex-col justify-end pb-2">
+            <label className="flex items-center gap-xs cursor-pointer group w-fit">
+              <input type="checkbox" className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer" {...register('requiresPacking')} />
+              <span className="text-body-md font-noto text-on-surface group-hover:text-primary transition-colors select-none">
+                Cần đóng gói
+              </span>
             </label>
+          </div>
+          <div className="sm:col-span-2">
+            <FormField label="Ghi chú dòng" error={errors.lineNote?.message}>
+              <input id="edit-lineNote" type="text" className={inputCls(false, !!errors.lineNote)} {...register('lineNote')} />
+            </FormField>
           </div>
           {/* Eyelet */}
           <div className="sm:col-span-2 flex items-center gap-sm">

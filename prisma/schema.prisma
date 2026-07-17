@@ -32,11 +32,16 @@ model ProductionOrder {
   mbCode       String?  // Mã Masterbatch màu — e.g. "MYD4501A", "7079", "LS309315"
 
   // Optional order details (added S2)
-  qty          Int?                  // quantity in rolls
-  uvPct        Decimal?  @db.Decimal(5, 2) // UV treatment percentage 0-100
-  frFlag       Boolean   @default(false)   // flame-retardant treatment
-  description  String?               // free-text order description
-  remark       String?               // free-text internal remark
+  qty             Int?                  // quantity in rolls
+  uvPct           Decimal?  @db.Decimal(5, 2) // UV treatment percentage 0-100
+  frFlag          Boolean   @default(false)   // flame-retardant treatment (legacy UI, kept for compat)
+  frPct           Decimal?  @db.Decimal(5, 2) // % FR (vd: 6.5, 9.0)
+  description     String?               // free-text order description
+  remark          String?               // free-text internal remark
+  lineNote        String?               // per-line: ghi chú cho dòng hàng này
+  requiresPacking Boolean   @default(false)   // checkbox đóng gói
+  deliveryDate    DateTime?             // shared: ngày giao hàng
+  containerSize   String?               // shared: "40HQ x 1", "20FT x 1"
 
   // Technical specs (added M3)
   meshType     String?               // Thể loại lưới

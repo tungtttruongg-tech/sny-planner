@@ -36,6 +36,8 @@ export default async function POSummaryPage() {
       pieceLength:   o.pieceLength   != null ? o.pieceLength.toFixed(2)   : null,
       qtySqm:        o.qtySqm        != null ? o.qtySqm.toFixed(2)        : null,
       totalWeightKgs: o.totalWeightKgs != null ? o.totalWeightKgs.toFixed(2) : null,
+      deliveryDate: o.deliveryDate != null ? o.deliveryDate.toISOString() : null,
+      frPct: o.frPct != null ? o.frPct.toString() : null,
       assignments: o.assignments.map(a => ({
         startDate: a.startDate.toISOString(),
         endDate: a.endDate.toISOString(),

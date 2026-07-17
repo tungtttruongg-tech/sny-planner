@@ -67,6 +67,7 @@ export const createOrderSchema = z.object({
     .optional(),
 
   frFlag: z.boolean().default(false),
+  frPct: z.number().min(0, 'FR% must be between 0 and 100').max(100, 'FR% must be between 0 and 100').nullable().optional(),
 
   description: z
     .string()
@@ -81,6 +82,17 @@ export const createOrderSchema = z.object({
     .transform((v) => v.trim())
     .nullable()
     .optional(),
+
+  lineNote: z
+    .string()
+    .max(200, 'Line note must be 200 characters or fewer')
+    .transform((v) => v.trim())
+    .nullable()
+    .optional(),
+
+  requiresPacking: z.boolean().default(false),
+  deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Delivery date must be a valid date (YYYY-MM-DD)').nullable().optional(),
+  containerSize: z.string().max(50, 'Container size must be 50 characters or fewer').transform((v) => v.trim()).nullable().optional(),
 
   // Technical specs
   meshType: z
@@ -199,6 +211,7 @@ export const updateOrderSchema = z.object({
     .optional(),
 
   frFlag: z.boolean().optional(),
+  frPct: z.number().min(0).max(100).nullable().optional(),
 
   description: z
     .string()
@@ -213,6 +226,11 @@ export const updateOrderSchema = z.object({
     .transform((v) => v.trim())
     .nullable()
     .optional(),
+
+  lineNote: z.string().max(200).transform(v => v.trim()).nullable().optional(),
+  requiresPacking: z.boolean().optional(),
+  deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  containerSize: z.string().max(50).transform(v => v.trim()).nullable().optional(),
 
   // Technical specs
   meshType: z
@@ -276,9 +294,13 @@ const lineSchema = z.object({
   pieceLength: z.number().gt(0).nullable().optional(),
   uvPct:       z.number().min(0).max(100).nullable().optional(),
   frFlag:      z.boolean().default(false),
+  frPct:       z.number().min(0).max(100).nullable().optional(),
+  requiresPacking: z.boolean().default(false),
+  lineNote:    z.string().max(200).transform(v => v.trim()).nullable().optional(),
   hasEyelet:   z.boolean().default(false),
   eyeletColor: z.string().max(50).nullable().optional(),
   // Per-line tech specs (moved from shared section)
+  mbCode:      z.string().max(50).transform((v) => v.trim()).nullable().optional(),
   meshType:    z.string().max(100).transform((v) => v.trim()).nullable().optional(),
   needleCount: z.number().int().positive().nullable().optional(),
   beamCount:   z.number().int().positive().nullable().optional(),
@@ -292,10 +314,11 @@ export const multiLineOrderSchema = z.object({
   piNumber:    z.string().min(1, 'PI Number là bắt buộc').max(50).transform((v) => v.trim()),
   customer:    z.string().min(1, 'Khách hàng là bắt buộc').max(100).transform((v) => v.trim()),
   orderDate:   z.string().min(1, 'Ngày đặt hàng là bắt buộc').regex(/^\d{4}-\d{2}-\d{2}$/),
-  mbCode:      z.string().max(50).transform((v) => v.trim()).nullable().optional(),
+  deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  containerSize: z.string().max(50).transform(v => v.trim()).nullable().optional(),
   description: z.string().max(200).transform((v) => v.trim()).nullable().optional(),
   remark:      z.string().max(200).transform((v) => v.trim()).nullable().optional(),
-  // gsm, meshType, needleCount, beamCount moved to lineSchema (per-line)
+  // mbCode, gsm, meshType, needleCount, beamCount moved to lineSchema (per-line)
   lines:       z.array(lineSchema).min(1, 'Cần ít nhất 1 dòng'),
 })
 
