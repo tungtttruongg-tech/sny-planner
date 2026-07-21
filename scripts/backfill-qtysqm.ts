@@ -112,8 +112,8 @@ async function backfill(dryRun: boolean) {
       pieceLength: toDecimal(o.pieceLength),
     })
 
-    // Bỏ qua nếu tính ra 0 (thiếu field quan trọng)
-    if (result.qtySqm <= 0 || result.totalWeightKgs <= 0) {
+    // Bỏ qua nếu tính ra null hoặc 0 (thiếu field quan trọng)
+    if (result.qtySqm == null || result.qtySqm <= 0 || result.totalWeightKgs == null || result.totalWeightKgs <= 0) {
       console.log(`  ⚠  SKIP  ${o.piNumber}[${o.subLineIndex}] — kết quả 0 (thiếu field)`)
       skipped++
       continue

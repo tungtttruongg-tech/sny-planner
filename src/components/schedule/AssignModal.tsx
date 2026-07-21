@@ -29,7 +29,10 @@ interface Props {
 
 /** Format one sub-line as a structured dropdown option label. */
 function formatOrderLabel(o: Order): string {
-  const base = `${o.piNumber} · Dòng ${o.subLineIndex + 1} — ${Number(o.widthM).toFixed(1)}m · ${o.color} · ${o.gsm}gsm`
+  const widthStr = o.widthM != null ? `${Number(o.widthM).toFixed(1)}m` : '—'
+  const colorStr = o.color ?? '—'
+  const gsmStr = o.gsm != null ? `${o.gsm}gsm` : '—'
+  const base = `${o.piNumber} · Dòng ${o.subLineIndex + 1} — ${widthStr} · ${colorStr} · ${gsmStr}`
   return o.meshType ? `${base} · ${o.meshType}` : base
 }
 
@@ -63,11 +66,11 @@ function SubLineDetailPanel({ o }: { o: Order }) {
       </p>
       <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
         <DetailRow label="Khách"      value={o.customer} />
-        <DetailRow label="Chiều rộng" value={`${Number(o.widthM).toFixed(1)} m`} mono />
-        <DetailRow label="GSM"        value={String(o.gsm)} mono />
-        <DetailRow label="Màu"        value={o.color} />
+        <DetailRow label="Chiều rộng" value={o.widthM != null ? `${Number(o.widthM).toFixed(1)} m` : '—'} mono />
+        <DetailRow label="GSM"        value={o.gsm != null ? String(o.gsm) : '—'} mono />
+        <DetailRow label="Màu"        value={o.color ?? '—'} />
         {o.meshType && <DetailRow label="Loại lưới" value={o.meshType} />}
-        <DetailRow label="Tổng mét"   value={`${Number(o.lengthM).toLocaleString('vi-VN')} m`} mono />
+        <DetailRow label="Tổng mét"   value={o.lengthM != null ? `${Number(o.lengthM).toLocaleString('vi-VN')} m` : '—'} mono />
         {o.qty != null && (
           <DetailRow label="Số lượng" value={`${o.qty.toLocaleString('vi-VN')} cuộn`} mono />
         )}

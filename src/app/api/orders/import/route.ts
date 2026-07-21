@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { parseOrderList } from '@/lib/excel/parseOrderList'
+import { prisma } from '@/lib/db'
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB
 const PREVIEW_LIMIT = 20
@@ -76,12 +77,52 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // ── 5. Return first PREVIEW_LIMIT rows (no DB write) ─────────────────────
+  // ── 5. Check PI Number customer conflicts ───────────────────────────────
+  const piCustomerMap = new Map<string, string>()
+  for (const r of rows) {
+    if (r.piNumber && r.customer) {
+      piCustomerMap.set(r.piNumber.trim().toUpperCase(), r.customer.trim())
+    }
+  }
+
+  const piWarnings: string[] = []
+  const uniquePis = Array.from(piCustomerMap.keys())
+  if (uniquePis.length > 0) {
+    const existingOrders = await prisma.productionOrder.findMany({
+      where: {
+        piNumber: { in: uniquePis, mode: 'insensitive' },
+      },
+      select: { piNumber: true, customer: true },
+    })
+
+    const existingPiMap = new Map<string, Set<string>>()
+    for (const o of existingOrders) {
+      const key = o.piNumber.trim().toUpperCase()
+      const set = existingPiMap.get(key) ?? new Set()
+      if (o.customer) set.add(o.customer.trim())
+      existingPiMap.set(key, set)
+    }
+
+    for (const [piUpper, fileCustomer] of Array.from(piCustomerMap.entries())) {
+      const dbCustomers = existingPiMap.get(piUpper)
+      if (dbCustomers && dbCustomers.size > 0) {
+        const dbCust = Array.from(dbCustomers)[0]
+        if (dbCust.toLowerCase() !== fileCustomer.toLowerCase()) {
+          piWarnings.push(
+            `⚠ PI Number [${piUpper}] đã tồn tại với khách hàng [${dbCust}] — file Excel đang nhập cho khách hàng [${fileCustomer}].`
+          )
+        }
+      }
+    }
+  }
+
+  // ── 6. Return first PREVIEW_LIMIT rows (no DB write) ─────────────────────
   const preview = rows.slice(0, PREVIEW_LIMIT)
 
   return NextResponse.json({
     success: true,
     totalParsed: rows.length,
     preview,
+    piWarnings,
   })
 }

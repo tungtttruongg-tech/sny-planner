@@ -9,6 +9,7 @@ import { useState, useMemo, useCallback } from 'react'
 import type { SerializedProductionOrder } from '@/types'
 import { OrderStatus, calcOrderStatus } from '@/lib/orderStatus'
 import OrderStatusBadge from './OrderStatusBadge'
+import DraftBadge from './DraftBadge'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ interface PIGroup {
   totalQtySqm: number | null
   totalWeightKgs: number | null
   status: OrderStatus
+  hasDraft: boolean
 }
 
 interface Props {
@@ -53,15 +55,17 @@ function groupOrders(orders: SerializedProductionOrder[]): PIGroup[] {
     let totalQtySqm: number | null = null
     let totalWeightKgs: number | null = null
 
+    // Skip draft/incomplete sub-lines in group total weight calculations
     for (const s of subLines) {
-      if (s.qtySqm != null) {
+      if (!s.isDraft && s.qtySqm != null) {
         totalQtySqm = (totalQtySqm ?? 0) + parseFloat(s.qtySqm)
       }
-      if (s.totalWeightKgs != null) {
+      if (!s.isDraft && s.totalWeightKgs != null) {
         totalWeightKgs = (totalWeightKgs ?? 0) + parseFloat(s.totalWeightKgs)
       }
     }
 
+    const hasDraft = subLines.some(s => s.isDraft)
     const allAssignments = subLines.flatMap(s => s.assignments || [])
     const status = calcOrderStatus(allAssignments)
     
@@ -69,7 +73,7 @@ function groupOrders(orders: SerializedProductionOrder[]): PIGroup[] {
     const containerSize = subLines[0].containerSize
     const customerId = subLines[0].customerId || null
 
-    groups.push({ piNumber, customers, customerId, orderDate, deliveryDate, containerSize, subLines, totalQtySqm, totalWeightKgs, status })
+    groups.push({ piNumber, customers, customerId, orderDate, deliveryDate, containerSize, subLines, totalQtySqm, totalWeightKgs, status, hasDraft })
   }
 
   // Sort groups by most recent orderDate descending
@@ -141,13 +145,16 @@ function SubLineTable({
               key={s.id}
               className="border-b border-outline-variant/50 hover:bg-surface-container-lowest transition-colors"
             >
-              <td className="px-3 py-2 font-mono text-outline">{s.subLineIndex}</td>
-              <td className="px-3 py-2 font-medium text-on-surface">{s.color}</td>
-              <td className="px-3 py-2 font-mono text-on-surface">{Number(s.widthM).toFixed(1)}</td>
-              <td className="px-3 py-2 font-mono text-on-surface">{s.gsm}</td>
+              <td className="px-3 py-2 font-mono text-outline flex items-center gap-1">
+                {s.isDraft && <DraftBadge />}
+                <span>{s.subLineIndex}</span>
+              </td>
+              <td className="px-3 py-2 font-medium text-on-surface">{s.color || '—'}</td>
+              <td className="px-3 py-2 font-mono text-on-surface">{s.widthM != null ? Number(s.widthM).toFixed(1) : '—'}</td>
+              <td className="px-3 py-2 font-mono text-on-surface">{s.gsm != null ? s.gsm : '—'}</td>
               <td className="px-3 py-2 text-secondary">{orderTypeLabel(s.orderType)}</td>
               <td className="px-3 py-2 font-mono text-right text-on-surface">
-                {Number(s.lengthM).toLocaleString('vi-VN')}
+                {s.lengthM != null ? Number(s.lengthM).toLocaleString('vi-VN') : '—'}
               </td>
               <td className="px-3 py-2 font-mono text-right text-on-surface">
                 {s.qty != null ? s.qty.toLocaleString('vi-VN') : '—'}
@@ -349,6 +356,7 @@ export default function POSummaryTable({ orders }: Props) {
                     <span className="font-mono font-semibold text-sm text-primary">
                       {group.piNumber}
                     </span>
+                    {group.hasDraft && <DraftBadge />}
                     <OrderStatusBadge status={group.status} />
                     {group.customers.length > 1 && (
                       <span

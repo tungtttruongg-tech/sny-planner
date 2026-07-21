@@ -97,7 +97,7 @@ function calcLine(line: LineItem) {
     pieceLength,
   })
 
-  if (result.totalMeters <= 0) return null
+  if (result.totalMeters == null || result.totalMeters <= 0) return null
   return result
 }
 
@@ -154,6 +154,7 @@ export default function MultiLineOrderForm() {
   const [containerSize,setContainerSize]= useState('')
   const [description, setDescription] = useState('')
   const [remark,      setRemark]      = useState('')
+  const [isDraft,     setIsDraft]     = useState(false)
 
   // ── Lines (now include gsm, meshType, needleCount, beamCount per line) ──────
   const [lines, setLines] = useState<LineItem[]>([newLine()])
@@ -162,6 +163,41 @@ export default function MultiLineOrderForm() {
   const [isSaving,    setIsSaving]    = useState(false)
   const [apiError,    setApiError]    = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [piWarning,   setPiWarning]   = useState<string | null>(null)
+
+  // ── PI Number Duplicate Customer Check ────────────────────────────────────
+  useEffect(() => {
+    const trimmedPi = piNumber.trim()
+    const trimmedCustomer = customer.trim()
+
+    if (!trimmedPi) {
+      setPiWarning(null)
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/orders/check-pi?piNumber=${encodeURIComponent(trimmedPi)}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data.exists && data.customers && data.customers.length > 0) {
+            const existingCustomer = data.customers[0] as string
+            if (trimmedCustomer && existingCustomer.toLowerCase() !== trimmedCustomer.toLowerCase()) {
+              setPiWarning(
+                `⚠ PI Number [${trimmedPi}] đã tồn tại với khách hàng [${existingCustomer}] — xác nhận đây có đúng là PI Number bạn muốn nhập không?`
+              )
+              return
+            }
+          }
+        }
+        setPiWarning(null)
+      } catch (err) {
+        console.error('Error checking PI number:', err)
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [piNumber, customer])
 
   // ── Customer Autocomplete ─────────────────────────────────────────────────
   const [customerOptions, setCustomerOptions] = useState<{ id: string, name: string }[]>([])
@@ -212,7 +248,6 @@ export default function MultiLineOrderForm() {
 
   // ── Line mutation helpers ─────────────────────────────────────────────────
 
-  // Copy all fields from last line (only color reset) — prevents re-entering common specs
   const addLine = () => setLines((prev) => [...prev, copyLine(prev[prev.length - 1])])
 
   const removeLine = (id: number) =>
@@ -229,9 +264,15 @@ export default function MultiLineOrderForm() {
   function validate(): boolean {
     const errs: Record<string, string> = {}
 
-    if (!piNumber.trim()) errs.piNumber  = 'PI Number là bắt buộc'
-    if (!customer.trim()) errs.customer  = 'Khách hàng là bắt buộc'
-    if (!orderDate)       errs.orderDate = 'Ngày đặt hàng là bắt buộc'
+    if (!piNumber.trim()) errs.piNumber = 'PI Number là bắt buộc'
+    if (!customer.trim()) errs.customer = 'Khách hàng là bắt buộc'
+
+    if (isDraft) {
+      setFieldErrors(errs)
+      return Object.keys(errs).length === 0
+    }
+
+    if (!orderDate) errs.orderDate = 'Ngày đặt hàng là bắt buộc'
 
     lines.forEach((line, i) => {
       const p = `lines.${i}`
@@ -276,27 +317,28 @@ export default function MultiLineOrderForm() {
       piNumber:    piNumber.trim(),
       customer:    customer.trim(),
       customerId,
-      orderDate,
+      orderDate:   orderDate || undefined,
       deliveryDate: deliveryDate || undefined,
       containerSize: containerSize.trim() || undefined,
       description: description.trim() || undefined,
       remark:      remark.trim()      || undefined,
+      isDraft,
       // Per-line fields (gsm, meshType, needleCount, beamCount now inside each line)
       lines: lines.map((line) => ({
-        color:     line.color.trim(),
-        widthM:    parseFloat(line.widthM),
-        gsm:       parseInt(line.gsm),
+        color:     line.color.trim() || undefined,
+        widthM:    line.widthM ? parseFloat(line.widthM) : undefined,
+        gsm:       line.gsm ? parseInt(line.gsm) : undefined,
         orderType: line.orderType,
-        ...(line.orderType === 'meters' && {
+        ...(line.orderType === 'meters' && line.lengthM && {
           lengthM: parseFloat(line.lengthM),
         }),
         ...(line.orderType === 'rolls' && {
-          qty:        parseInt(line.qty),
-          rollLength: parseFloat(line.rollLength),
+          ...(line.qty && { qty: parseInt(line.qty) }),
+          ...(line.rollLength && { rollLength: parseFloat(line.rollLength) }),
         }),
         ...(line.orderType === 'pieces' && {
-          qty:         parseInt(line.qty),
-          pieceLength: parseFloat(line.pieceLength),
+          ...(line.qty && { qty: parseInt(line.qty) }),
+          ...(line.pieceLength && { pieceLength: parseFloat(line.pieceLength) }),
         }),
         uvPct:      line.uvPct ? parseFloat(line.uvPct) : undefined,
         frPct:      line.frPct ? parseFloat(line.frPct) : undefined,
@@ -347,10 +389,30 @@ export default function MultiLineOrderForm() {
       )}
 
       {/* ── Shared fields card ─────────────────────────────────────────────── */}
-      <section className="bg-surface-container-lowest border-[0.5px] border-outline-variant rounded-xl p-6">
-        <p className="text-xs font-inter font-semibold text-secondary uppercase tracking-widest mb-4">
-          Thông tin chung — áp dụng cho tất cả dòng hàng
-        </p>
+      <section className="bg-surface-container-lowest border-[0.5px] border-outline-variant rounded-xl p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-xs font-inter font-semibold text-secondary uppercase tracking-widest">
+            Thông tin chung — áp dụng cho tất cả dòng hàng
+          </p>
+          <label htmlFor="ml-isDraft" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#FFF8E7] border border-[#F59E0B]/40 text-[#92400E] text-xs font-medium cursor-pointer hover:bg-[#FEF3C7] transition-colors select-none">
+            <input
+              id="ml-isDraft"
+              type="checkbox"
+              checked={isDraft}
+              onChange={(e) => setIsDraft(e.target.checked)}
+              className="w-4 h-4 text-[#D97706] rounded border-[#F59E0B] focus:ring-[#D97706] cursor-pointer"
+            />
+            <span>Đây là đơn nháp (lưu tạm khi thông tin chưa đầy đủ)</span>
+          </label>
+        </div>
+
+        {/* PI Warning Banner */}
+        {piWarning && (
+          <div className="p-3 bg-[#FFF8E7] border border-[#F59E0B] rounded-lg text-xs text-[#92400E] font-medium flex items-start gap-2">
+            <span className="material-symbols-outlined text-[18px] shrink-0 mt-0.5 text-[#D97706]">warning</span>
+            <div>{piWarning}</div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* PI Number */}
@@ -838,18 +900,22 @@ export default function MultiLineOrderForm() {
               {/* Live calculation preview */}
               {calc && (
                 <div className="mt-3 flex flex-wrap gap-4 px-1">
-                  <span className="text-xs font-inter text-secondary">
-                    Tổng mét:{' '}
-                    <span className="font-mono text-on-surface font-semibold">
-                      {calc.totalMeters.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} m
+                  {calc.totalMeters != null && (
+                    <span className="text-xs font-inter text-secondary">
+                      Tổng mét:{' '}
+                      <span className="font-mono text-on-surface font-semibold">
+                        {calc.totalMeters.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} m
+                      </span>
                     </span>
-                  </span>
-                  <span className="text-xs font-inter text-secondary">
-                    Trọng lượng ước tính:{' '}
-                    <span className="font-mono text-on-surface font-semibold">
-                      {calc.totalWeightKgs.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} kg
+                  )}
+                  {calc.totalWeightKgs != null && (
+                    <span className="text-xs font-inter text-secondary">
+                      Trọng lượng ước tính:{' '}
+                      <span className="font-mono text-on-surface font-semibold">
+                        {calc.totalWeightKgs.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} kg
+                      </span>
                     </span>
-                  </span>
+                  )}
                 </div>
               )}
             </div>

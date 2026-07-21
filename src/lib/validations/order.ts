@@ -321,9 +321,50 @@ export const multiLineOrderSchema = z.object({
   containerSize: z.string().max(50).transform(v => v.trim()).nullable().optional(),
   description: z.string().max(200).transform((v) => v.trim()).nullable().optional(),
   remark:      z.string().max(200).transform((v) => v.trim()).nullable().optional(),
-  // mbCode, gsm, meshType, needleCount, beamCount moved to lineSchema (per-line)
+  isDraft:     z.boolean().optional(),
   lines:       z.array(lineSchema).min(1, 'Cần ít nhất 1 dòng'),
 })
 
 export type MultiLineOrderInput  = z.input<typeof multiLineOrderSchema>
 export type MultiLineOrderOutput = z.output<typeof multiLineOrderSchema>
+
+// ── Draft multi-line order schema (Sprint F1) ──────────────────────────────────
+// Used when isDraft === true. Requires ONLY piNumber and customer.
+// All spec fields on lines are optional/nullable.
+
+const draftLineSchema = z.object({
+  color:       z.string().max(50).transform((v) => v.trim().toUpperCase()).nullable().optional(),
+  widthM:      z.number().gt(0).max(20).nullable().optional(),
+  gsm:         z.number().int().gt(0).max(500).nullable().optional(),
+  orderType:   z.enum(['meters', 'rolls', 'pieces']).default('rolls'),
+  lengthM:     z.number().gt(0).max(100_000).nullable().optional(),
+  qty:         z.number().int().gt(0).nullable().optional(),
+  rollLength:  z.number().gt(0).nullable().optional(),
+  pieceLength: z.number().gt(0).nullable().optional(),
+  uvPct:       z.number().min(0).max(100).nullable().optional(),
+  frFlag:      z.boolean().default(false),
+  frPct:       z.number().min(0).max(100).nullable().optional(),
+  requiresPacking: z.boolean().default(false),
+  lineNote:    z.string().max(200).transform(v => v.trim()).nullable().optional(),
+  hasEyelet:   z.boolean().default(false),
+  eyeletColor: z.string().max(50).nullable().optional(),
+  mbCode:      z.string().max(50).transform((v) => v.trim()).nullable().optional(),
+  meshType:    z.string().max(100).transform((v) => v.trim()).nullable().optional(),
+  needleCount: z.number().int().positive().nullable().optional(),
+  beamCount:   z.number().int().positive().nullable().optional(),
+  eyeletLines: z.number().int().positive().nullable().optional(),
+  eyeletSpec:  z.string().max(200).nullable().optional(),
+})
+
+export const draftMultiLineOrderSchema = z.object({
+  piNumber:    z.string().min(1, 'PI Number là bắt buộc').max(50).transform((v) => v.trim()),
+  customer:    z.string().min(1, 'Khách hàng là bắt buộc').max(100).transform((v) => v.trim()),
+  customerId:  z.string().nullable().optional(),
+  orderDate:   z.string().transform(v => v.trim()).optional(),
+  deliveryDate: z.string().nullable().optional(),
+  containerSize: z.string().max(50).transform(v => v.trim()).nullable().optional(),
+  description: z.string().max(200).transform((v) => v.trim()).nullable().optional(),
+  remark:      z.string().max(200).transform((v) => v.trim()).nullable().optional(),
+  isDraft:     z.boolean().default(true),
+  lines:       z.array(draftLineSchema).min(1, 'Cần ít nhất 1 dòng'),
+})

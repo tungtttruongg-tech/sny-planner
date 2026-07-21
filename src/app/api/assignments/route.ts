@@ -94,6 +94,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // Server-side check: Đơn nháp (isDraft = true) KHÔNG được phép gán vào Lịch sản xuất
+    const targetOrder = await prisma.productionOrder.findUnique({
+      where: { id: orderId },
+      select: { isDraft: true, piNumber: true },
+    });
+
+    if (targetOrder?.isDraft) {
+      return NextResponse.json(
+        { message: `Đơn nháp [${targetOrder.piNumber}] chưa được duyệt. Vui lòng duyệt đơn trước khi gán vào Lịch sản xuất.` },
+        { status: 422 }
+      );
+    }
+
     // Kiểm tra chồng lịch theo máy (một máy không thể chạy 2 đơn cùng lúc)
     console.log("OVERLAP CHECK TRIGGERED");
     const existing = await prisma.machineAssignment.findFirst({

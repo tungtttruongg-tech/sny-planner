@@ -26,11 +26,13 @@ export interface SerializedProductionOrder {
   customerId: string | null
   orderDate: string
 
-  widthM: number
-  lengthM: number
-  gsm: number
-  color: string
+  widthM: number | null
+  lengthM: number | null
+  gsm: number | null
+  color: string | null
   mbCode: string | null
+
+  isDraft: boolean
 
   qty: number | null
   uvPct: string | null

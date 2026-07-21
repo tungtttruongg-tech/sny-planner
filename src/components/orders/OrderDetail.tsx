@@ -18,22 +18,25 @@ import AssignFromOrderModal from '@/components/schedule/AssignFromOrderModal'
 import { calculateOrderWeight } from '@/lib/calculations/orderWeight'
 import { calcOrderStatus } from '@/lib/orderStatus'
 import OrderStatusBadge from './OrderStatusBadge'
+import DraftBadge from './DraftBadge'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string): string {
+  if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-GB', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   })
 }
 
 function formatDateTime(iso: string): string {
+  if (!iso) return '—'
   return new Date(iso).toLocaleString('en-GB', {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
 }
 
-function toDateInputValue(iso: string): string { return iso.slice(0, 10) }
+function toDateInputValue(iso: string): string { return iso ? iso.slice(0, 10) : '' }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -91,6 +94,37 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [showAssignModal, setShowAssignModal] = useState(false)
+
+  // Draft approval state (Sprint F1)
+  const [isApproving, setIsApproving] = useState(false)
+  const [approveError, setApproveError] = useState<{ message: string; missingFields?: string[] } | null>(null)
+
+  const handleApproveDraft = async () => {
+    setIsApproving(true)
+    setApproveError(null)
+
+    try {
+      const res = await fetch(`/api/orders/${currentOrder.id}/approve`, {
+        method: 'POST',
+      })
+      const json = await res.json()
+
+      if (!res.ok || !json.success) {
+        setApproveError({
+          message: json.error ?? 'Chưa thể duyệt đơn nháp do thiếu thông tin.',
+          missingFields: json.missingFields ?? [],
+        })
+        return
+      }
+
+      setCurrentOrder((prev) => ({ ...prev, isDraft: false }))
+      router.refresh()
+    } catch {
+      setApproveError({ message: 'Lỗi kết nối mạng khi duyệt đơn nháp.' })
+    } finally {
+      setIsApproving(false)
+    }
+  }
 
   // Danh sách máy đang chạy đơn hàng này
   type MachineRow = { id: string; machineId: string; startDate: string; endDate: string; allocatedMeters: string | null }
@@ -169,7 +203,7 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
       rollLength: editRollLength ? Number(editRollLength) : null,
       pieceLength: editPieceLength ? Number(editPieceLength) : null,
     })
-    return totalWeightKgs > 0 ? totalWeightKgs.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : null
+    return (totalWeightKgs != null && totalWeightKgs > 0) ? totalWeightKgs.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : null
   })()
 
   const enterEdit = () => {
@@ -177,8 +211,8 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
     reset({
       piNumber: currentOrder.piNumber, subLineIndex: currentOrder.subLineIndex,
       customer: currentOrder.customer, orderDate: toDateInputValue(currentOrder.orderDate),
-      widthM: currentOrder.widthM, lengthM: currentOrder.lengthM, gsm: currentOrder.gsm,
-      color: currentOrder.color, qty: currentOrder.qty,
+      widthM: currentOrder.widthM ?? undefined, lengthM: currentOrder.lengthM ?? undefined, gsm: currentOrder.gsm ?? undefined,
+      color: currentOrder.color ?? undefined, qty: currentOrder.qty ?? undefined,
       mbCode: currentOrder.mbCode ?? undefined,
       uvPct: currentOrder.uvPct != null ? parseFloat(currentOrder.uvPct) : null,
       frFlag: currentOrder.frFlag,
@@ -234,11 +268,67 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
 
   // ── VIEW mode ──────────────────────────────────────────────────────────────
 
+  // ── VIEW mode ──────────────────────────────────────────────────────────────
+
   if (mode === 'view') {
     return (
       <div className="space-y-lg">
+
+        {/* Draft Banner */}
+        {currentOrder.isDraft && (
+          <div className="p-4 bg-[#FFF8E7] border border-[#F59E0B] rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-start gap-2.5 text-xs text-[#92400E]">
+              <span className="material-symbols-outlined text-[22px] text-[#D97706] shrink-0 mt-0.5">edit_note</span>
+              <div>
+                <p className="font-bold text-sm text-[#B45309]">ĐƠN NHÁP — Thông tin đơn hàng chưa đầy đủ</p>
+                <p className="mt-0.5 text-secondary">Đơn nháp chưa thể gán vào Lịch sản xuất. Kiểm tra, bổ sung đủ thông số và bấm "Duyệt đơn nháp".</p>
+              </div>
+            </div>
+            <button
+              id="btn-approve-draft"
+              onClick={handleApproveDraft}
+              disabled={isApproving}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#D97706] hover:bg-[#B45309] text-white text-xs font-semibold shrink-0 shadow transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">check_circle</span>
+              {isApproving ? 'Đang duyệt...' : 'Duyệt đơn nháp →'}
+            </button>
+          </div>
+        )}
+
+        {/* Approve Error Banner */}
+        {approveError && (
+          <div role="alert" className="p-4 bg-error-container border border-error/40 rounded-xl text-error text-xs space-y-2">
+            <div className="flex items-center gap-2 font-semibold">
+              <span className="material-symbols-outlined text-[18px]">error</span>
+              <span>{approveError.message}</span>
+            </div>
+            {approveError.missingFields && approveError.missingFields.length > 0 && (
+              <div className="pl-6 space-y-1">
+                <p className="font-medium">Vui lòng bổ sung các thông tin sau trước khi duyệt:</p>
+                <ul className="list-disc pl-4 space-y-0.5">
+                  {approveError.missingFields.map((f, i) => (
+                    <li key={i}>{f}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Action buttons */}
         <div className="flex items-center justify-end gap-sm">
+          {currentOrder.isDraft && (
+            <button
+              id="btn-approve-draft-header"
+              onClick={handleApproveDraft}
+              disabled={isApproving}
+              className="inline-flex items-center justify-center gap-sm bg-[#D97706] hover:bg-[#B45309] text-white text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-[18px]">check_circle</span>
+              {isApproving ? 'Đang duyệt...' : 'Duyệt đơn nháp →'}
+            </button>
+          )}
           <button
             id="btn-delete-order"
             onClick={() => { setShowDeleteDialog(true); setDeleteError(null); setDeleteStatus('idle') }}
@@ -253,14 +343,16 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           >
             <span className="material-symbols-outlined text-[18px]">edit</span>Edit
           </button>
-          <button
-            id="btn-assign-machine"
-            onClick={() => setShowAssignModal(true)}
-            className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
-          >
-            <span className="material-symbols-outlined text-[18px]">precision_manufacturing</span>
-            Assign to machine
-          </button>
+          {!currentOrder.isDraft && (
+            <button
+              id="btn-assign-machine"
+              onClick={() => setShowAssignModal(true)}
+              className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">precision_manufacturing</span>
+              Assign to machine
+            </button>
+          )}
         </div>
 
         {/* Máy đang chạy */}
@@ -288,8 +380,8 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           </div>
         )}
 
-        {/* Tiến độ sản xuất — chỉ hiện khi có machine assignment */}
-        {machineRows.length > 0 && progress && (
+        {/* Tiến độ sản xuất — Bị ẨN nếu là đơn nháp (isDraft === true) */}
+        {!currentOrder.isDraft && machineRows.length > 0 && progress && (
           <div className="border border-outline-variant rounded-xl p-md bg-surface-container-low">
             <p className="text-label-sm font-inter font-semibold text-secondary uppercase tracking-widest mb-sm">
               Tiến độ sản xuất
@@ -357,6 +449,7 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
             <dt className="text-label-sm font-inter font-medium text-secondary uppercase tracking-wider">PI Number</dt>
             <dd className="flex items-center gap-2 text-type-mono font-mono text-on-surface">
               <span>{currentOrder.piNumber}</span>
+              {currentOrder.isDraft && <DraftBadge />}
               <OrderStatusBadge status={calcOrderStatus(currentOrder.assignments)} />
             </dd>
           </div>
@@ -369,10 +462,10 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           {currentOrder.containerSize && (
             <ViewField label="Container size" value={currentOrder.containerSize} />
           )}
-          <ViewField label="Width (m)"    value={Number(currentOrder.widthM).toFixed(1)}        mono />
-          <ViewField label="Length (m)"   value={Number(currentOrder.lengthM).toLocaleString()} mono />
-          <ViewField label="GSM"          value={currentOrder.gsm}                              mono />
-          <ViewField label="Color"        value={currentOrder.color}                            />
+          <ViewField label="Width (m)"    value={currentOrder.widthM != null ? Number(currentOrder.widthM).toFixed(1) : null} mono />
+          <ViewField label="Length (m)"   value={currentOrder.lengthM != null ? Number(currentOrder.lengthM).toLocaleString() : null} mono />
+          <ViewField label="GSM"          value={currentOrder.gsm ?? null}                      mono />
+          <ViewField label="Color"        value={currentOrder.color ?? null}                    />
           {currentOrder.totalWeightKgs != null && (
             <ViewField
               label="Trọng lượng (kg)"

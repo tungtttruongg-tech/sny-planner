@@ -13,6 +13,7 @@ export async function getUnassignedOrders() {
   const orders = await prisma.productionOrder.findMany({
     where: {
       status: { not: 'DONE' },
+      isDraft: false,
     },
     select: {
       id: true,

@@ -19,10 +19,21 @@ export async function GET(_req: NextRequest, { params }: Params) {
   // ── 1. Fetch order ─────────────────────────────────────────────────────────
   const order = await prisma.productionOrder.findUnique({
     where: { id: orderId },
-    select: { id: true, lengthM: true },
+    select: { id: true, lengthM: true, isDraft: true },
   })
   if (!order) {
     return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 })
+  }
+
+  if (order.isDraft || order.lengthM == null) {
+    return NextResponse.json({
+      success: true,
+      producedMeters: 0,
+      remainingMeters: 0,
+      avgDailyOutput: null,
+      remainingDays: null,
+      hasData: false,
+    })
   }
 
   // ── 2. Fetch all machine assignments for this order ─────────────────────────

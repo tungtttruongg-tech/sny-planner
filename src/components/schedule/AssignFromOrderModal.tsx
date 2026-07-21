@@ -32,17 +32,23 @@ export default function AssignFromOrderModal({ order, onAssigned, onClose }: Pro
   const [startDate, setStartDate]         = useState('')
   const [endDate, setEndDate]             = useState('')
   const [allocatedMeters, setAllocatedMeters] = useState<string>(
-    // Mặc định chia đôi chiều dài đơn hàng
-    String(Math.round(order.lengthM / 2))
+    order.lengthM ? String(Math.round(order.lengthM / 2)) : ''
   )
   const [estimatedDailyOutput, setEstimatedDailyOutput] = useState('')
-  const [error, setError]                 = useState('')
+  const [error, setError]                 = useState(
+    order.isDraft ? 'Đơn nháp chưa được duyệt. Vui lòng duyệt đơn trước khi gán vào Lịch sản xuất.' : ''
+  )
   const [isLoading, setIsLoading]         = useState(false)
   const [isSuccess, setIsSuccess]         = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (order.isDraft) {
+      setError('Đơn nháp chưa được duyệt. Vui lòng duyệt đơn trước khi gán vào Lịch sản xuất.')
+      return
+    }
 
     // Client-side date validation
     const parsedStart = new Date(startDate)

@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation'
 import type { SerializedProductionOrder } from '@/types'
 import { OrderStatus, calcOrderStatus } from '@/lib/orderStatus'
 import OrderStatusBadge from './OrderStatusBadge'
+import DraftBadge from './DraftBadge'
 
 interface OrderTableProps {
   orders: SerializedProductionOrder[]
@@ -17,6 +18,7 @@ interface OrderTableProps {
 
 /** Format an ISO date string as DD/MM/YYYY */
 function formatDate(iso: string): string {
+  if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-GB', {
     day: '2-digit',
     month: '2-digit',
@@ -208,7 +210,10 @@ export default function OrderTable({ orders }: OrderTableProps) {
 
                       {/* Status Badge */}
                       <td className="px-md py-sm whitespace-nowrap">
-                        <OrderStatusBadge status={order.calculatedStatus} />
+                        <div className="flex items-center gap-1.5">
+                          {order.isDraft && <DraftBadge />}
+                          <OrderStatusBadge status={order.calculatedStatus} />
+                        </div>
                       </td>
 
                       {/* Customer */}
@@ -230,31 +235,35 @@ export default function OrderTable({ orders }: OrderTableProps) {
 
                       {/* Width */}
                       <td className="px-md py-sm text-right text-type-mono font-mono text-on-surface tabular-nums">
-                        {Number(order.widthM).toFixed(1)}
+                        {order.widthM != null ? Number(order.widthM).toFixed(1) : <span className="text-outline italic">—</span>}
                       </td>
 
                       {/* Length */}
                       <td className="px-md py-sm text-right text-type-mono font-mono text-on-surface tabular-nums">
-                        {Number(order.lengthM).toLocaleString()}
+                        {order.lengthM != null ? Number(order.lengthM).toLocaleString() : <span className="text-outline italic">—</span>}
                       </td>
 
                       {/* GSM */}
                       <td className="px-md py-sm text-right text-type-mono font-mono text-on-surface tabular-nums">
-                        {order.gsm}
+                        {order.gsm != null ? order.gsm : <span className="text-outline italic">—</span>}
                       </td>
 
                       {/* Color — dot + name */}
                       <td className="px-md py-sm">
-                        <span className="inline-flex items-center gap-sm">
-                          <span
-                            className="w-3 h-3 rounded-full border border-gray-300 shrink-0"
-                            style={{ backgroundColor: COLOR_MAP[order.color.toUpperCase()] ?? '#73777f' }}
-                            aria-hidden="true"
-                          />
-                          <span className="text-body-md font-noto text-on-surface">
-                            {order.color}
+                        {order.color ? (
+                          <span className="inline-flex items-center gap-sm">
+                            <span
+                              className="w-3 h-3 rounded-full border border-gray-300 shrink-0"
+                              style={{ backgroundColor: COLOR_MAP[order.color.toUpperCase()] ?? '#73777f' }}
+                              aria-hidden="true"
+                            />
+                            <span className="text-body-md font-noto text-on-surface">
+                              {order.color}
+                            </span>
                           </span>
-                        </span>
+                        ) : (
+                          <span className="text-outline italic">—</span>
+                        )}
                       </td>
 
                       {/* Action — View button, visible on row hover */}

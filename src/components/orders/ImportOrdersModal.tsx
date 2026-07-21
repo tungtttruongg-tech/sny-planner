@@ -22,6 +22,7 @@ type ModalState =
 interface PreviewData {
   rows: ParsedOrder[]
   totalParsed: number
+  piWarnings?: string[]
 }
 
 interface ConfirmResult {
@@ -106,7 +107,7 @@ export default function ImportOrdersModal() {
         return
       }
 
-      setPreview({ rows: json.preview, totalParsed: json.totalParsed })
+      setPreview({ rows: json.preview, totalParsed: json.totalParsed, piWarnings: json.piWarnings })
       setState('preview')
     } catch {
       setError('Network error — could not reach the server.')
@@ -261,6 +262,17 @@ export default function ImportOrdersModal() {
               {/* ── PREVIEW STATE ────────────────────────────────────────── */}
               {state === 'preview' && preview && (
                 <div className="space-y-4">
+                  {preview.piWarnings && preview.piWarnings.length > 0 && (
+                    <div className="p-3 bg-[#FFF8E7] border border-[#F59E0B] rounded-lg text-xs text-[#92400E] font-medium space-y-1">
+                      {preview.piWarnings.map((w, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <span className="material-symbols-outlined text-[16px] shrink-0 mt-0.5 text-[#D97706]">warning</span>
+                          <span>{w}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between">
                     <p className="text-label-sm font-inter text-secondary">
                       Showing first{' '}

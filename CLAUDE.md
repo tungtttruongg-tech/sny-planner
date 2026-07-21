@@ -2,8 +2,7 @@
 > Ground truth for all AI coding agents (Antigravity, Cursor).
 > READ THIS ENTIRE FILE before generating any code.
 > If context in this file conflicts with your judgment → this file wins.
-> Last updated: 21/07/2026
-> Last sprint DONE: Extruder Daily Output (Sprint E1) + Warping Daily Output (Sprint E2) ✅
+> Last sprint DONE: Extruder Daily Output (Sprint E1) + Warping Daily Output (Sprint E2) + Knitting Daily Detail (Sprint E3) + Draft Order (Sprint F1) ✅
 > Next sprint pending: mbCode per-line + frPct Decimal + 6 req mới từ KH
 
 ---
@@ -270,6 +269,17 @@ dataSource   String   @default("manual")
 - **Top nav:** logo + Phase 1 badge + bell + avatar only (NO tabs)
 - **Side nav:** Production(`/orders`), Schedule(`/schedule`), Materials(`/materials`), Reports(disabled), Settings(disabled)
 
+### Draft Order ✅ (Sprint F1)
+- `isDraft Boolean @default(false)` field on `ProductionOrder` model (with `@@index([isDraft])`).
+- `widthM`, `lengthM`, `gsm`, `color` optional for draft orders (`Float?`, `Int?`, `String?`).
+- `draftMultiLineOrderSchema` in `src/lib/validations/order.ts` (requires `piNumber` + `customer` only).
+- Checkbox "Đây là đơn nháp" in `MultiLineOrderForm.tsx` (`/orders/new-multi`).
+- `POST /api/orders/[id]/approve` endpoint — validates against `multiLineOrderSchema`, recalculates weights, sets `isDraft = false`. Returns 422 with `missingFields: string[]` if incomplete.
+- `DraftBadge` component (`src/components/orders/DraftBadge.tsx`) rendered on `OrderTable`, `OrderDetail`, `POSummaryTable`.
+- `OrderDetail.tsx` — top draft warning banner + **"Duyệt đơn nháp →"** button + missing fields error box + **hides Progress Tracking section completely**.
+- `AssignModal` & `AssignFromOrderModal` — filters out draft orders at query level (`isDraft: false`) and blocks assignment in API POST.
+- Excel Import & Bulk Paste intentionally do NOT support draft creation (fail validation as before if fields missing).
+
 ### Packages installed (do NOT reinstall)
 - next@14.2.35, react, react-dom, typescript, tailwindcss
 - prisma@5.22.0, @prisma/client@5.22.0
@@ -298,12 +308,15 @@ model ProductionOrder {
   customer     String
   orderDate    DateTime
 
-  // Fabric specs
-  widthM       Float    // roll width in metres (e.g. 4.0)
-  lengthM      Float    // order length in metres (or calculated total for rolls/pieces)
-  gsm          Int      // grams per square metre (e.g. 165)
-  color        String   // e.g. "BLACK", "WHITE"
+  // Fabric specs (optional for draft orders, required for approved orders)
+  widthM       Float?   // roll width in metres (e.g. 4.0)
+  lengthM      Float?   // order length in metres (or calculated total for rolls/pieces)
+  gsm          Int?     // grams per square metre (e.g. 165)
+  color        String?  // e.g. "BLACK", "WHITE"
   mbCode       String?  // Mã Masterbatch màu — e.g. "MYD4501A", "7079", "LS309315"
+
+  // Draft Order (Sprint F1)
+  isDraft      Boolean  @default(false)
 
   // Optional order details
   qty          Int?                  // quantity in rolls or pieces
@@ -445,7 +458,79 @@ model KnittingDailyOutput {
 ```
 ⚠️ Note: `cumulativeMeters` hiện lưu cùng giá trị với `dailyMeters` —
 field này không còn ý nghĩa "cumulative", giữ lại để không breaking schema.
-Sprint sau có thể cleanup nếu cần.
+
+⚠️ QUAN TRỌNG: model KnittingDailyOutput (đã có từ trước) KHÔNG bị đổi, vẫn chạy song song với KnittingDailyDetail — 2 model độc lập, phục vụ 2 mục đích khác nhau.
+
+### ExtruderDailyOutput
+```prisma
+model ExtruderDailyOutput {
+  id         String   @id @default(cuid())
+  machineId  String   // "EXT-01".."EXT-08"
+  reportDate DateTime // UTC midnight
+  shift      String   // "D" | "N"
+  color      String
+  denier     Decimal?
+  weightKgs  Decimal  @db.Decimal(10,2)
+  beamNote   String?  // vd "11 BEAM ( 158 SỢI)"
+  orderRef   String?  // vd "JPY26-274"
+  dataSource String   @default("import")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+```
+
+### WarpingDailyOutput
+```prisma
+model WarpingDailyOutput {
+  id                String   @id @default(cuid())
+  machineId         String   // "WARP-01".."WARP-06"
+  reportDate        DateTime
+  shift             String
+  weavingMachineRef String?  // số máy dệt liên quan, text tự do vd "24", "25+28" — KHÔNG validate FK
+  color             String
+  denier            Decimal?
+  strand            Int?
+  beamCount1        Decimal? // ⚠️ TÊN PLACEHOLDER — xem mục "Open items" bên dưới
+  mPerEa            Decimal?
+  weigValue         Decimal?
+  beamCount2        Decimal? // ⚠️ TÊN PLACEHOLDER — xem mục "Open items" bên dưới
+  quantity          Int?
+  weightKgs         Decimal  @db.Decimal(10,2)
+  orderRef          String?
+  dataSource        String   @default("import")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+```
+
+### KnittingDailyDetail
+```prisma
+model KnittingDailyDetail {
+  id             String   @id @default(cuid())
+  machineId      String   // "M-001".."M-040" — khớp trực tiếp máy dệt Schedule
+  reportDate     DateTime
+  shift          String
+  width          Decimal?
+  color          String
+  weightSpec     Decimal?
+  lengthM        Decimal?
+  tapeRoll       Int?
+  mValue         Decimal?
+  avgPerRoll     Decimal?
+  quantity       Int?
+  weightKgs      Decimal  @db.Decimal(10,2)
+  orderRef       String?
+  machineNote    String?  // ghi chú cấp máy (thay dàn, đổi màu...), same-value cho cả block máy/ngày
+  machineSizeM   Decimal?
+  cmPerMin       Decimal?
+  meterPerDay    Decimal?
+  operatingGrade Decimal?
+  totalPct       Decimal?
+  dataSource     String   @default("import")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+```
 
 ---
 
@@ -553,6 +638,7 @@ sny-planner/
 | Materials parser fix + NVL template download | ✅ Done |
 | Sprint E1 — Extruder Daily Output | ✅ Done |
 | Sprint E2 — Warping Daily Output | ✅ Done |
+| Sprint E3 — Knitting Daily Detail | ✅ Done |
 
 ## 9. Sprints pending — Must have trước Gate G3 (24–27/7)
 
@@ -579,6 +665,15 @@ Req mới từ Dung/Loan (16/07/2026) — chưa build:
 3. **"Số mét tổng" trên PO Summary** — hiện chỉ có M² (TỔNG) và KG (TỔNG), chưa có cột tổng số MÉT riêng. Cần hỏi Loan có cần thiết không trước khi thêm.
 4. **Auth** — NextAuth.js v5, 3 roles: Admin/Planner/Viewer (sprint riêng sau G3).
 5. **Phase 2 AI** — AI-1 gợi ý lịch, AI-2 cảnh báo NVL, AI-3 chat tiếng Việt.
+
+## 9c. Domain Terminology & Open items
+- **EXT-01 đến EXT-08**: mã máy Extruder (8 máy, khác M-001..M-040 máy dệt)
+- **WARP-01 đến WARP-06**: mã máy Warping (6 máy, khác EXT và khác M-001..040)
+- **weavingMachineRef**: số máy dệt liên quan trong báo cáo Warping, lưu text tự do, KHÔNG validate FK
+- **KnittingDailyOutput vs KnittingDailyDetail**: Output = tổng mét/máy/ngày, phục vụ Progress Tracking LIVE trên Order Detail/PO Summary (KHÔNG đổi). Detail = breakdown ca/màu/đơn hàng + thông số vận hành máy, phục vụ Sprint D (thông số dàn máy trên Schedule)
+- **machineNote**: ghi chú vận hành cấp máy/ngày (vd thay dàn, đổi màu) — gắn same-value cho toàn bộ record cùng máy/ngày trong KnittingDailyDetail, không phải ghi chú riêng từng dòng
+- ⚠️ **PENDING**: field `beamCount1`/`beamCount2` trong WarpingDailyOutput là TÊN PLACEHOLDER — chưa xác nhận ý nghĩa nghiệp vụ thật với SNY (Dung/Loan). KHÔNG dùng 2 field này cho bất kỳ tính toán/công thức nào ở Phase 2 cho đến khi có xác nhận và rename.
+- ⚠️ **Rolling module** (sản phẩm cuối, ma trận ngày×máy 1435 dòng, phức tạp nhất) — chưa bắt đầu
 
 ---
 
@@ -609,6 +704,14 @@ Req mới từ Dung/Loan (16/07/2026) — chưa build:
 8. Query via Prisma only. NO raw SQL string concat.
 9. NEVER `dangerouslySetInnerHTML` with user input.
 10. NEVER delete files or DB without Tung's confirmation.
+11. Sau khi hoàn thành 1 sprint, XÓA ngay các script debug/migration tạm thời (vd `scripts/debug-*.ts`, script migration 1-lần-dùng-xong) khỏi repo — dù không chạy trong luồng chính, TypeScript vẫn quét khi build và có thể âm thầm chặn Vercel build.
+12. Khi báo cáo đã hoàn thành 1 hành động (xóa file, sửa file...), PHẢI kèm bằng chứng xác minh (git status/git diff, không chỉ mô tả bằng lời) — tiền lệ: từng báo 'đã xóa file' nhưng thực tế file vẫn còn nguyên trên đĩa, gây mất thời gian điều tra lại.
+
+---
+
+## 11b. Sprint Workflow & Verification Standard (Phase C)
+Trong Phase C (Verify) của mọi sprint từ giờ về sau:
+- **BẮT BUỘC:** Chạy `npm run build` (lệnh build thật, giống hệt Vercel) — **KHÔNG dùng `tsc --noEmit` làm căn cứ duy nhất**. Tiền lệ: Sprint E3 `tsc --noEmit` pass nhưng `npm run build` fail do lỗi type trong script cũ, khiến Vercel deploy fail dù local báo pass.
 
 ---
 

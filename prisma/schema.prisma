@@ -26,12 +26,15 @@ model ProductionOrder {
   // Order info
   orderDate    DateTime
 
-  // Fabric specs
-  widthM       Float    // roll width in metres (e.g. 4.0)
-  lengthM      Float    // order length in metres
-  gsm          Int      // grams per square metre (e.g. 165)
-  color        String   // e.g. "BLACK", "WHITE"
+  // Fabric specs (optional for draft orders, required for approved orders)
+  widthM       Float?   // roll width in metres (e.g. 4.0)
+  lengthM      Float?   // order length in metres
+  gsm          Int?     // grams per square metre (e.g. 165)
+  color        String?  // e.g. "BLACK", "WHITE"
   mbCode       String?  // Mã Masterbatch màu — e.g. "MYD4501A", "7079", "LS309315"
+
+  // Draft Order (Sprint F1) — true cho đơn lưu tạm thiếu thông tin
+  isDraft      Boolean  @default(false)
 
   // Optional order details (added S2)
   qty             Int?                  // quantity in rolls
@@ -94,6 +97,7 @@ model ProductionOrder {
   @@unique([piNumber, subLineIndex])
   @@index([piNumber])
   @@index([orderDate])
+  @@index([isDraft])
   @@map("production_orders")
 }
 

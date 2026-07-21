@@ -10,12 +10,12 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { multiLineOrderSchema } from '@/lib/validations/order'
+import { multiLineOrderSchema, draftMultiLineOrderSchema } from '@/lib/validations/order'
 import { calculateOrderWeight } from '@/lib/calculations/orderWeight'
 
 export async function POST(req: NextRequest) {
   // ── 1. Parse body ──────────────────────────────────────────────────────────
-  let body: unknown
+  let body: any
   try {
     body = await req.json()
   } catch {
@@ -25,8 +25,10 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // ── 2. Zod validation ──────────────────────────────────────────────────────
-  const parsed = multiLineOrderSchema.safeParse(body)
+  // ── 2. Zod validation (draft vs normal) ───────────────────────────────────
+  const isDraft = Boolean(body?.isDraft)
+  const schema = isDraft ? draftMultiLineOrderSchema : multiLineOrderSchema
+  const parsed = schema.safeParse(body)
   if (!parsed.success) {
     const messages = parsed.error.issues
       .map((e) => `${String(e.path.join('.'))}: ${e.message}`)
@@ -80,17 +82,20 @@ export async function POST(req: NextRequest) {
         pieceLength: line.pieceLength ?? null,
       })
 
+      const effectiveOrderDate = orderDate ? new Date(orderDate) : new Date()
+
       return {
         piNumber,
         subLineIndex: nextIndex + i,
         customer,
+        isDraft,
         ...(customerId && { customerId }),
-        orderDate:   new Date(orderDate),
-        gsm:         line.gsm,         // per-line
-        color:       line.color,
-        widthM:      line.widthM,
-        lengthM:     lm,
-        orderType:   line.orderType,
+        orderDate:   effectiveOrderDate,
+        ...(line.gsm    != null && { gsm:    line.gsm }),
+        ...(line.color   && { color:  line.color }),
+        ...(line.widthM != null && { widthM: line.widthM }),
+        ...(lm != null && lm > 0 && { lengthM: lm }),
+        orderType:   line.orderType ?? 'meters',
         // Conditional per-type fields
         ...(line.qty        != null && { qty:        line.qty }),
         ...(line.rollLength  != null && { rollLength:  line.rollLength }),
