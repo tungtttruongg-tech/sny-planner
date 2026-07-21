@@ -230,3 +230,43 @@ model ExtruderDailyOutput {
   @@index([reportDate])
   @@map("extruder_daily_output")
 }
+
+model WarpingDailyOutput {
+  id                String   @id @default(cuid())
+  machineId         String   // "WARP-01".."WARP-06" (mắc/xe sợi, khác M-001..M-040 máy dệt)
+  reportDate        DateTime // UTC midnight — timezone-independent (giống Knitting & Extruder)
+  shift             String   // "D" (ca ngày) hoặc "N" (ca đêm)
+
+  // Số máy dệt liên quan (vd "40", "M-040") — text tự do, KHÔNG validate FK
+  weavingMachineRef String?
+
+  color             String   // tên màu (vd "BLACK", "WHITE", "AQUA BLUE")
+  denier            Decimal? @db.Decimal(10, 2)
+  strand            Decimal? @db.Decimal(10, 2) // số sợi (STRAND)
+
+  // TODO: tên field tạm thời (placeholder) — CẦN xác nhận ý nghĩa nghiệp vụ
+  // thật với SNY (Dung/Loan) trước khi coi là final. KHÔNG dùng tên này để
+  // tính toán/hiển thị công thức nào ở Phase 2 cho đến khi confirm.
+  beamCount1        Decimal? @db.Decimal(10, 2) // Cột BEAM thứ 1 (trước M/EA)
+
+  mPerEa            Decimal? @db.Decimal(10, 2) // Cột M/EA (mét/ea)
+  weigValue         Decimal? @db.Decimal(10, 2) // Cột WEIG (trọng lượng đơn vị)
+
+  // TODO: tên field tạm thời (placeholder) — CẦN xác nhận ý nghĩa nghiệp vụ
+  // thật với SNY (Dung/Loan) trước khi coi là final. KHÔNG dùng tên này để
+  // tính toán/hiển thị công thức nào ở Phase 2 cho đến khi confirm.
+  beamCount2        Decimal? @db.Decimal(10, 2) // Cột BEAM thứ 2 (trước QUANTITY)
+
+  quantity          Decimal? @db.Decimal(10, 2) // Cột QUANTITY
+  weightKgs         Decimal  @db.Decimal(10, 2) // Cột WEIGHT (sản lượng kg, 0 hợp lệ)
+
+  orderRef          String?  // Mã PI / đơn hàng (từ cột REMARK, vd "JPY26-274")
+
+  dataSource        String   @default("import")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([machineId])
+  @@index([reportDate])
+  @@map("warping_daily_output")
+}

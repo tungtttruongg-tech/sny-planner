@@ -18,6 +18,8 @@ import MBTab from '@/components/materials/MBTab'
 import KoreaTab from '@/components/materials/KoreaTab'
 import ExtruderTab from '@/components/materials/ExtruderTab'
 import ImportExtruderModal from '@/components/materials/ImportExtruderModal'
+import WarpingTab from '@/components/materials/WarpingTab'
+import ImportWarpingModal from '@/components/materials/ImportWarpingModal'
 
 // Note: metadata export is not supported in 'use client' components.
 // Page title is set via the <title> in the HTML head from layout.tsx.
@@ -103,8 +105,9 @@ export default function MaterialsPage() {
   const [isDeleting, setIsDeleting]           = useState(false)
   
   const [showExtruderModal, setShowExtruderModal]       = useState(false)
+  const [showWarpingModal, setShowWarpingModal]         = useState(false)
   
-  const [activeTab, setActiveTab] = useState<'HDPE' | 'MB' | 'KOREA' | 'EXTRUDER'>('HDPE')
+  const [activeTab, setActiveTab] = useState<'HDPE' | 'MB' | 'KOREA' | 'EXTRUDER' | 'WARPING'>('EXTRUDER')
 
   // ── Fetch all materials ────────────────────────────────────────────────────
 
@@ -204,7 +207,7 @@ export default function MaterialsPage() {
 
       {/* Tab Navigation */}
       <div className="flex gap-2 border-b-[0.5px] border-outline-variant mb-6">
-        {(['EXTRUDER', 'HDPE', 'MB', 'KOREA'] as const).map((tab) => (
+        {(['EXTRUDER', 'WARPING', 'HDPE', 'MB', 'KOREA'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -214,13 +217,13 @@ export default function MaterialsPage() {
                 : 'border-transparent text-secondary hover:text-on-surface'
             }`}
           >
-            {tab === 'EXTRUDER' ? 'Extruder' : tab === 'MB' ? 'Masterbatch' : tab === 'KOREA' ? 'Korea & Khác' : tab}
+            {tab === 'EXTRUDER' ? 'Extruder' : tab === 'WARPING' ? 'Warping' : tab === 'MB' ? 'Masterbatch' : tab === 'KOREA' ? 'Korea & Khác' : tab}
           </button>
         ))}
       </div>
 
       {/* Summary cards (Material stock - only shown for material tabs) */}
-      {activeTab !== 'EXTRUDER' && (
+      {(activeTab !== 'EXTRUDER' && activeTab !== 'WARPING') && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <SummaryCard
             label="Total Materials"
@@ -261,6 +264,11 @@ export default function MaterialsPage() {
               onImport={() => setShowExtruderModal(true)}
             />
           )}
+          {activeTab === 'WARPING' && (
+            <WarpingTab
+              onImport={() => setShowWarpingModal(true)}
+            />
+          )}
           {activeTab === 'HDPE' && (
             <HDPETab
               materials={activeMaterials}
@@ -297,7 +305,7 @@ export default function MaterialsPage() {
       {/* Add modal */}
       {showAddModal && (
         <AddMaterialModal
-          defaultGroup={activeTab === 'EXTRUDER' ? 'HDPE' : activeTab}
+          defaultGroup={(activeTab === 'EXTRUDER' || activeTab === 'WARPING') ? 'HDPE' : activeTab}
           onAdded={() => { fetchMaterials(); setShowAddModal(false) }}
           onClose={() => setShowAddModal(false)}
         />
@@ -316,6 +324,14 @@ export default function MaterialsPage() {
         <ImportExtruderModal
           onImported={() => {}}
           onClose={() => setShowExtruderModal(false)}
+        />
+      )}
+
+      {/* Import Warping Report modal */}
+      {showWarpingModal && (
+        <ImportWarpingModal
+          onImported={() => {}}
+          onClose={() => setShowWarpingModal(false)}
         />
       )}
 
