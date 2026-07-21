@@ -10,6 +10,9 @@ import { useState } from 'react'
 export interface SerializedMaterial {
   id: string
   name: string
+  group: 'HDPE' | 'MB' | 'KOREA'
+  color: string | null
+  brand: string | null
   currentStock: string
   minThreshold: string | null  // null = chưa đặt ngưỡng
   unit: string
@@ -25,6 +28,9 @@ interface Props {
 }
 
 export default function EditMaterialModal({ material, onUpdated, onClose }: Props) {
+  const [group, setGroup]               = useState<'HDPE' | 'MB' | 'KOREA'>(material.group)
+  const [color, setColor]               = useState(material.color ?? '')
+  const [brand, setBrand]               = useState(material.brand ?? '')
   const [currentStock, setCurrentStock] = useState(parseFloat(material.currentStock).toString())
   const [minThreshold, setMinThreshold] = useState(
     material.minThreshold != null ? parseFloat(material.minThreshold).toString() : ''
@@ -52,6 +58,9 @@ export default function EditMaterialModal({ material, onUpdated, onClose }: Prop
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          group,
+          color: color.trim() || null,
+          brand: brand.trim() || null,
           currentStock: stock,
           minThreshold: threshold,
           note: note.trim() || null,
@@ -98,16 +107,58 @@ export default function EditMaterialModal({ material, onUpdated, onClose }: Prop
             </div>
           )}
 
-          {/* Tên nguyên liệu — read-only */}
+          {/* Name (readonly) */}
           <div>
             <label className="block text-xs font-medium text-secondary mb-1">Tên nguyên liệu</label>
             <input
               type="text"
-              disabled
+              readOnly
               value={material.name}
-              className="w-full h-10 px-3 rounded-lg border-[0.5px] border-outline-variant bg-surface-container-lowest text-on-surface-variant text-sm cursor-not-allowed"
+              className={inputCls() + ' bg-surface-container opacity-60 cursor-not-allowed'}
             />
           </div>
+
+          {/* Group */}
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">
+              Nhóm NVL <span className="text-error">*</span>
+            </label>
+            <select
+              value={group}
+              onChange={e => setGroup(e.target.value as 'HDPE' | 'MB' | 'KOREA')}
+              className={inputCls()}
+            >
+              <option value="HDPE">HDPE</option>
+              <option value="MB">Masterbatch (MB)</option>
+              <option value="KOREA">Korea & Khác</option>
+            </select>
+          </div>
+
+          {/* Màu và Hãng (chỉ hiện khi nhóm MB) */}
+          {group === 'MB' && (
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-secondary mb-1">Màu sắc</label>
+                <input
+                  type="text"
+                  value={color}
+                  onChange={e => setColor(e.target.value)}
+                  placeholder="e.g. ORANGE"
+                  className={inputCls()}
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-secondary mb-1">Hãng sản xuất</label>
+                <input
+                  type="text"
+                  value={brand}
+                  onChange={e => setBrand(e.target.value)}
+                  placeholder="e.g. ARIRANG"
+                  className={inputCls()}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Tồn kho + Ngưỡng tối thiểu */}
           <div className="flex gap-3">

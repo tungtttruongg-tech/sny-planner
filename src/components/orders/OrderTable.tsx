@@ -213,7 +213,14 @@ export default function OrderTable({ orders }: OrderTableProps) {
 
                       {/* Customer */}
                       <td className="px-md py-sm text-body-md font-noto text-on-surface whitespace-nowrap">
-                        {order.customer}
+                        <div className="flex items-center gap-2">
+                          {order.customer}
+                          {order.customerId === null && (
+                            <span className="text-[10px] font-medium bg-[#F59E0B]/10 text-[#D97706] px-1.5 py-0.5 rounded uppercase tracking-wider" title="Khách hàng này chưa có trong danh sách — vào Customers để thêm">
+                              KH mới
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Order Date */}

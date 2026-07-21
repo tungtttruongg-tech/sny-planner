@@ -13,6 +13,12 @@ import ImportMaterialReportModal from '@/components/materials/ImportMaterialRepo
 import ImportKnittingModal from '@/components/materials/ImportKnittingModal'
 import MaterialSidePanel from '@/components/materials/MaterialSidePanel'
 
+import HDPETab from '@/components/materials/HDPETab'
+import MBTab from '@/components/materials/MBTab'
+import KoreaTab from '@/components/materials/KoreaTab'
+import ExtruderTab from '@/components/materials/ExtruderTab'
+import ImportExtruderModal from '@/components/materials/ImportExtruderModal'
+
 // Note: metadata export is not supported in 'use client' components.
 // Page title is set via the <title> in the HTML head from layout.tsx.
 
@@ -95,6 +101,10 @@ export default function MaterialsPage() {
   const [deleteTarget, setDeleteTarget]       = useState<SerializedMaterial | null>(null)
   const [historyTarget, setHistoryTarget]     = useState<SerializedMaterial | null>(null)
   const [isDeleting, setIsDeleting]           = useState(false)
+  
+  const [showExtruderModal, setShowExtruderModal]       = useState(false)
+  
+  const [activeTab, setActiveTab] = useState<'HDPE' | 'MB' | 'KOREA' | 'EXTRUDER'>('HDPE')
 
   // ── Fetch all materials ────────────────────────────────────────────────────
 
@@ -135,13 +145,15 @@ export default function MaterialsPage() {
 
   // ── Derived summary stats (null-safe) ──────────────────────────────────────
 
+  const activeMaterials = materials.filter(m => m.group === activeTab)
+
   // Only count materials where minThreshold is set (not null)
-  const lowStockCount = materials.filter((m) => {
+  const lowStockCount = activeMaterials.filter((m) => {
     if (m.minThreshold == null) return false
     return parseFloat(m.currentStock) < parseFloat(m.minThreshold)
   }).length
 
-  const totalKg = materials.reduce((sum, m) => sum + parseFloat(m.currentStock), 0)
+  const totalKg = activeMaterials.reduce((sum, m) => sum + parseFloat(m.currentStock), 0)
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -164,22 +176,6 @@ export default function MaterialsPage() {
             Tải mẫu Dệt
           </button>
           <button
-            id="btn-download-nvl-template"
-            onClick={() => window.location.href = '/api/materials/nvl-template'}
-            className="inline-flex items-center justify-center gap-2 border border-outline bg-surface hover:bg-surface-container text-on-surface text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
-          >
-            <span className="material-symbols-outlined text-[18px]">download</span>
-            Tải mẫu NVL
-          </button>
-          <button
-            id="btn-import-material-report"
-            onClick={() => setShowImportModal(true)}
-            className="inline-flex items-center justify-center gap-2 border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
-          >
-            <span className="material-symbols-outlined text-[18px]">upload_file</span>
-            Import báo cáo
-          </button>
-          <button
             id="btn-import-knitting-report"
             onClick={() => setShowKnittingModal(true)}
             className="inline-flex items-center justify-center gap-2 border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
@@ -190,10 +186,10 @@ export default function MaterialsPage() {
           <button
             id="btn-add-material"
             onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center justify-center gap-2 bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 transition-colors"
+            className="inline-flex items-center justify-center gap-2 bg-primary text-on-primary text-sm font-medium px-4 py-2 h-9 rounded-md hover:bg-primary/90 transition-colors shadow-sm"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            Add material
+            Thêm NVL
           </button>
         </div>
       </div>
@@ -206,30 +202,49 @@ export default function MaterialsPage() {
         </div>
       )}
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <SummaryCard
-          label="Total Materials"
-          value={materials.length}
-          icon="inventory_2"
-          accent="text-on-surface"
-          border="border-outline-variant"
-        />
-        <SummaryCard
-          label="Low Stock Alerts"
-          value={lowStockCount}
-          icon="warning"
-          accent={lowStockCount > 0 ? 'text-error' : 'text-[#15803d]'}
-          border={lowStockCount > 0 ? 'border-error/30' : 'border-[#22c55e]/30'}
-        />
-        <SummaryCard
-          label="Total Stock"
-          value={`${totalKg.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 1 })} kg`}
-          icon="scale"
-          accent="text-primary"
-          border="border-primary/20"
-        />
+      {/* Tab Navigation */}
+      <div className="flex gap-2 border-b-[0.5px] border-outline-variant mb-6">
+        {(['EXTRUDER', 'HDPE', 'MB', 'KOREA'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-[1px] ${
+              activeTab === tab
+                ? 'border-primary text-primary font-semibold'
+                : 'border-transparent text-secondary hover:text-on-surface'
+            }`}
+          >
+            {tab === 'EXTRUDER' ? 'Extruder' : tab === 'MB' ? 'Masterbatch' : tab === 'KOREA' ? 'Korea & Khác' : tab}
+          </button>
+        ))}
       </div>
+
+      {/* Summary cards (Material stock - only shown for material tabs) */}
+      {activeTab !== 'EXTRUDER' && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <SummaryCard
+            label="Total Materials"
+            value={activeMaterials.length}
+            icon="inventory_2"
+            accent="text-on-surface"
+            border="border-outline-variant"
+          />
+          <SummaryCard
+            label="Low Stock Alerts"
+            value={lowStockCount}
+            icon="warning"
+            accent={lowStockCount > 0 ? 'text-error' : 'text-[#15803d]'}
+            border={lowStockCount > 0 ? 'border-error/30' : 'border-[#22c55e]/30'}
+          />
+          <SummaryCard
+            label="Total Stock"
+            value={`${totalKg.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 1 })} kg`}
+            icon="scale"
+            accent="text-primary"
+            border="border-primary/20"
+          />
+        </div>
+      )}
 
       {/* Table or loading */}
       {isLoading ? (
@@ -240,18 +255,49 @@ export default function MaterialsPage() {
           </svg>
         </div>
       ) : (
-        <MaterialsTable
-          materials={materials}
-          onEdit={setEditTarget}
-          onDelete={setDeleteTarget}
-          onHistory={setHistoryTarget}
-          onRowClick={setPanelMaterial}
-        />
+        <>
+          {activeTab === 'EXTRUDER' && (
+            <ExtruderTab
+              onImport={() => setShowExtruderModal(true)}
+            />
+          )}
+          {activeTab === 'HDPE' && (
+            <HDPETab
+              materials={activeMaterials}
+              onEdit={setEditTarget}
+              onDelete={setDeleteTarget}
+              onHistory={setHistoryTarget}
+              onRowClick={setPanelMaterial}
+              onImport={() => setShowImportModal(true)}
+            />
+          )}
+          {activeTab === 'MB' && (
+            <MBTab
+              materials={activeMaterials}
+              onEdit={setEditTarget}
+              onDelete={setDeleteTarget}
+              onHistory={setHistoryTarget}
+              onRowClick={setPanelMaterial}
+              onImport={() => setShowImportModal(true)}
+            />
+          )}
+          {activeTab === 'KOREA' && (
+            <KoreaTab
+              materials={activeMaterials}
+              onEdit={setEditTarget}
+              onDelete={setDeleteTarget}
+              onHistory={setHistoryTarget}
+              onRowClick={setPanelMaterial}
+              onImport={() => setShowImportModal(true)}
+            />
+          )}
+        </>
       )}
 
       {/* Add modal */}
       {showAddModal && (
         <AddMaterialModal
+          defaultGroup={activeTab === 'EXTRUDER' ? 'HDPE' : activeTab}
           onAdded={() => { fetchMaterials(); setShowAddModal(false) }}
           onClose={() => setShowAddModal(false)}
         />
@@ -262,6 +308,14 @@ export default function MaterialsPage() {
         <ImportMaterialReportModal
           onImported={fetchMaterials}
           onClose={() => { setShowImportModal(false); fetchMaterials() }}
+        />
+      )}
+
+      {/* Import Extruder Report modal */}
+      {showExtruderModal && (
+        <ImportExtruderModal
+          onImported={() => {}}
+          onClose={() => setShowExtruderModal(false)}
         />
       )}
 

@@ -29,6 +29,10 @@ const updateMaterialSchema = z.object({
     .transform((v) => v.trim())
     .nullable()
     .optional(),
+
+  group: z.enum(['HDPE', 'MB', 'KOREA']).optional(),
+  color: z.string().nullable().optional(),
+  brand: z.string().nullable().optional(),
 })
 
 // ── PATCH ─────────────────────────────────────────────────────────────────────
@@ -58,11 +62,14 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
   }
 
   const data = parsed.data
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updateData: Record<string, any> = {}
+  const updateData: any = {}
+
   if (data.currentStock !== undefined) updateData.currentStock = data.currentStock
   if (data.minThreshold !== undefined) updateData.minThreshold = data.minThreshold
-  if ('note' in data) updateData.note = data.note
+  if (data.note !== undefined) updateData.note = data.note
+  if (data.group !== undefined) updateData.group = data.group
+  if (data.color !== undefined) updateData.color = data.color
+  if (data.brand !== undefined) updateData.brand = data.brand
 
   try {
     const material = await prisma.material.update({

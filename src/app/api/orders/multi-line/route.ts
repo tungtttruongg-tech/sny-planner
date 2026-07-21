@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
   // ── 3. Destructure shared fields ──────────────────────────────────────────
   // gsm / meshType / needleCount / beamCount intentionally NOT here — they are per-line
-  const { piNumber, customer, orderDate, deliveryDate, containerSize, description, remark, lines } = parsed.data
+  const { piNumber, customer, customerId, orderDate, deliveryDate, containerSize, description, remark, lines } = parsed.data
 
   // ── 4. Derive effective lengthM for each line ──────────────────────────────
   // For "rolls" and "pieces", lengthM = calculated totalMeters so the field is
@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
         piNumber,
         subLineIndex: nextIndex + i,
         customer,
+        ...(customerId && { customerId }),
         orderDate:   new Date(orderDate),
         gsm:         line.gsm,         // per-line
         color:       line.color,

@@ -8,6 +8,7 @@ import { useState } from 'react'
 interface Props {
   onAdded: () => void
   onClose: () => void
+  defaultGroup?: 'HDPE' | 'MB' | 'KOREA'
 }
 
 // ── Serialized shape returned by POST /api/materials ─────────────────────────
@@ -22,8 +23,11 @@ interface SerializedMaterial {
   updatedAt: string
 }
 
-export default function AddMaterialModal({ onAdded, onClose }: Props) {
+export default function AddMaterialModal({ onAdded, onClose, defaultGroup = 'KOREA' }: Props) {
   const [name, setName]               = useState('')
+  const [group, setGroup]             = useState<'HDPE' | 'MB' | 'KOREA'>(defaultGroup)
+  const [color, setColor]             = useState('')
+  const [brand, setBrand]             = useState('')
   const [currentStock, setCurrentStock] = useState('')
   const [minThreshold, setMinThreshold] = useState('')
   const [note, setNote]               = useState('')
@@ -47,6 +51,9 @@ export default function AddMaterialModal({ onAdded, onClose }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
+          group,
+          color: color.trim() || undefined,
+          brand: brand.trim() || undefined,
           currentStock: stock,
           minThreshold: threshold,
           unit: 'kg',
@@ -103,6 +110,22 @@ export default function AddMaterialModal({ onAdded, onClose }: Props) {
             </div>
           )}
 
+          {/* Group */}
+          <div>
+            <label className="block text-xs font-medium text-secondary mb-1">
+              Nhóm NVL <span className="text-error">*</span>
+            </label>
+            <select
+              value={group}
+              onChange={e => setGroup(e.target.value as 'HDPE' | 'MB' | 'KOREA')}
+              className={inputCls()}
+            >
+              <option value="HDPE">HDPE</option>
+              <option value="MB">Masterbatch (MB)</option>
+              <option value="KOREA">Korea & Khác</option>
+            </select>
+          </div>
+
           {/* Tên nguyên liệu */}
           <div>
             <label className="block text-xs font-medium text-secondary mb-1">
@@ -118,6 +141,36 @@ export default function AddMaterialModal({ onAdded, onClose }: Props) {
               className={inputCls()}
             />
           </div>
+
+          {/* Màu và Hãng (chỉ hiện khi nhóm MB) */}
+          {group === 'MB' && (
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-secondary mb-1">
+                  Màu sắc
+                </label>
+                <input
+                  type="text"
+                  value={color}
+                  onChange={e => setColor(e.target.value)}
+                  placeholder="e.g. ORANGE"
+                  className={inputCls()}
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-secondary mb-1">
+                  Hãng sản xuất
+                </label>
+                <input
+                  type="text"
+                  value={brand}
+                  onChange={e => setBrand(e.target.value)}
+                  placeholder="e.g. ARIRANG"
+                  className={inputCls()}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Tồn kho + Ngưỡng tối thiểu (side by side) */}
           <div className="flex gap-3">

@@ -35,6 +35,9 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  const groupStr = formData.get('group')
+  const group = (groupStr === 'HDPE' || groupStr === 'MB' || groupStr === 'KOREA') ? groupStr : 'HDPE'
+
   const fileName = file instanceof File ? file.name : 'upload'
   if (!fileName.toLowerCase().endsWith('.xlsx')) {
     return NextResponse.json(
@@ -54,7 +57,7 @@ export async function POST(req: NextRequest) {
   let parsed: ParsedMaterialRow[]
   try {
     const buf = Buffer.from(await file.arrayBuffer())
-    parsed = parseMaterialReport(buf)
+    parsed = parseMaterialReport(buf, group)
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Lỗi đọc file Excel.'
     return NextResponse.json({ success: false, error: msg }, { status: 422 })
@@ -67,19 +70,34 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // ── 3. Match against existing materials ────────────────────────────────────
-  const allMaterials = await prisma.material.findMany({ select: { id: true, name: true } })
+  // ── 3. Find matching materials in DB (only for this group) ───────────────
+  const dbMaterials = await prisma.material.findMany({
+    where: { group },
+    select: { id: true, name: true, color: true, brand: true },
+  })
 
-  const previewRows: PreviewRow[] = parsed.map((row) => {
-    const upper = row.materialName.toUpperCase().trim()
-    const match = allMaterials.find(
-      (m) => m.name.toUpperCase().trim() === upper,
-    )
+  // Basic normalization for matching
+  const norm = (s: string) => s.trim().toUpperCase().replace(/\s+/g, ' ')
+
+  const previewRows: PreviewRow[] = parsed.map((p) => {
+    let matchedId = null
+    let matchedName = null
+
+    // For MB, we might want to check name, color and brand? 
+    // The parser returns materialName. We just match the DB name.
+    const pName = norm(p.materialName)
+    const match = dbMaterials.find((db) => norm(db.name) === pName)
+    
+    if (match) {
+      matchedId = match.id
+      matchedName = match.name
+    }
+
     return {
-      ...row,
-      matchedMaterialId: match?.id ?? null,
-      matchedMaterialName: match?.name ?? null,
-      isNew: !match,
+      ...p,
+      matchedMaterialId: matchedId,
+      matchedMaterialName: matchedName,
+      isNew: !matchedId,
     }
   })
 

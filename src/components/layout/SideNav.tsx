@@ -26,6 +26,7 @@ type NavItem = ActiveNavItem | DisabledNavItem
 
 const NAV_ITEMS: NavItem[] = [
   { kind: 'link',     icon: 'factory',        label: 'Production', href: '/orders'    },
+  { kind: 'link',     icon: 'group',          label: 'Customers',  href: '/customers' },
   { kind: 'link',     icon: 'calendar_month', label: 'Schedule',   href: '/schedule'  },
   { kind: 'link',     icon: 'inventory_2',    label: 'Materials',  href: '/materials' },
   { kind: 'disabled', icon: 'assessment',     label: 'Reports'                        },
@@ -85,6 +86,8 @@ export default function SideNav() {
           const active =
             item.href === '/orders'
               ? (pathname === '/orders' || pathname.startsWith('/orders/'))
+              : item.href === '/customers'
+              ? (pathname === '/customers' || pathname.startsWith('/customers/'))
               : pathname === item.href
 
           return (

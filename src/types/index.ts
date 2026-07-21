@@ -23,6 +23,7 @@ export interface SerializedProductionOrder {
   piNumber: string
   subLineIndex: number
   customer: string
+  customerId: string | null
   orderDate: string
 
   widthM: number

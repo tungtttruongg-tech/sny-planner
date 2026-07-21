@@ -11,7 +11,7 @@
 // "+ Thêm dòng" copies ALL per-line fields from the previous row so planners
 // only need to adjust the fields that differ (usually just color/width).
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { calculateOrderWeight } from '@/lib/calculations/orderWeight'
 
@@ -148,6 +148,7 @@ export default function MultiLineOrderForm() {
   // ── Shared fields (apply to all sub-lines) ─────────────────────────────────
   const [piNumber,    setPiNumber]    = useState('')
   const [customer,    setCustomer]    = useState('')
+  const [customerId,  setCustomerId]  = useState<string | null>(null)
   const [orderDate,   setOrderDate]   = useState('')
   const [deliveryDate,setDeliveryDate]= useState('')
   const [containerSize,setContainerSize]= useState('')
@@ -161,6 +162,53 @@ export default function MultiLineOrderForm() {
   const [isSaving,    setIsSaving]    = useState(false)
   const [apiError,    setApiError]    = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+
+  // ── Customer Autocomplete ─────────────────────────────────────────────────
+  const [customerOptions, setCustomerOptions] = useState<{ id: string, name: string }[]>([])
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
+  const [isSearchingCustomer, setIsSearchingCustomer] = useState(false)
+  const customerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (customerRef.current && !customerRef.current.contains(e.target as Node)) {
+        setShowCustomerDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      setIsSearchingCustomer(true)
+      try {
+        const query = customer.trim()
+        const url = query ? `/api/customers/search?q=${encodeURIComponent(query)}` : '/api/customers'
+        const res = await fetch(url)
+        if (res.ok) {
+          const data = await res.json()
+          setCustomerOptions(query ? data : data.slice(0, 20))
+          
+          if (query) {
+            const exact = data.find((c: any) => c.name.toLowerCase() === query.toLowerCase())
+            if (exact) {
+              setCustomerId(exact.id)
+            } else {
+              setCustomerId(null)
+            }
+          } else {
+            setCustomerId(null)
+          }
+        }
+      } catch (err) {
+      } finally {
+        setIsSearchingCustomer(false)
+      }
+    }, customer.trim() ? 300 : 0)
+
+    return () => clearTimeout(timer)
+  }, [customer])
 
   // ── Line mutation helpers ─────────────────────────────────────────────────
 
@@ -227,6 +275,7 @@ export default function MultiLineOrderForm() {
       // Shared fields
       piNumber:    piNumber.trim(),
       customer:    customer.trim(),
+      customerId,
       orderDate,
       deliveryDate: deliveryDate || undefined,
       containerSize: containerSize.trim() || undefined,
@@ -319,16 +368,46 @@ export default function MultiLineOrderForm() {
           </div>
 
           {/* Customer */}
-          <div>
-            <Label required>Khách hàng</Label>
+          <div className="relative" ref={customerRef}>
+            <div className="flex items-center justify-between mb-1">
+              <Label required>Khách hàng</Label>
+              {customer.trim() && customerId === null && (
+                <span className="text-[10px] font-medium bg-[#F59E0B]/10 text-[#D97706] px-1.5 py-0.5 rounded uppercase tracking-wider">
+                  Khách hàng mới
+                </span>
+              )}
+            </div>
             <input
               id="ml-customer"
               type="text"
               placeholder="e.g. GRABINO"
               value={customer}
-              onChange={(e) => setCustomer(e.target.value)}
+              onChange={(e) => {
+                setCustomer(e.target.value)
+                setShowCustomerDropdown(true)
+              }}
+              onFocus={() => setShowCustomerDropdown(true)}
               className={inputCls(!!fieldErrors.customer)}
+              autoComplete="off"
             />
+            {showCustomerDropdown && customerOptions.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-surface-container-lowest border-[0.5px] border-outline-variant rounded-md shadow-lg max-h-60 overflow-auto">
+                {customerOptions.map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className="w-full text-left px-3 py-2 text-sm text-on-surface hover:bg-surface-container-low transition-colors"
+                    onClick={() => {
+                      setCustomer(opt.name)
+                      setCustomerId(opt.id)
+                      setShowCustomerDropdown(false)
+                    }}
+                  >
+                    {opt.name}
+                  </button>
+                ))}
+              </div>
+            )}
             {fieldErrors.customer && <p className="text-xs text-error mt-1">{fieldErrors.customer}</p>}
           </div>
 

@@ -15,6 +15,7 @@ import OrderStatusBadge from './OrderStatusBadge'
 interface PIGroup {
   piNumber: string
   customers: string[]     // deduplicated; usually 1
+  customerId: string | null // NEW: for new customer check
   orderDate: string       // ISO string of the most recent sub-line's orderDate
   deliveryDate: string | null
   containerSize: string | null
@@ -66,8 +67,9 @@ function groupOrders(orders: SerializedProductionOrder[]): PIGroup[] {
     
     const deliveryDate = subLines[0].deliveryDate
     const containerSize = subLines[0].containerSize
+    const customerId = subLines[0].customerId || null
 
-    groups.push({ piNumber, customers, orderDate, deliveryDate, containerSize, subLines, totalQtySqm, totalWeightKgs, status })
+    groups.push({ piNumber, customers, customerId, orderDate, deliveryDate, containerSize, subLines, totalQtySqm, totalWeightKgs, status })
   }
 
   // Sort groups by most recent orderDate descending
@@ -360,8 +362,13 @@ export default function POSummaryTable({ orders }: Props) {
                   </span>
 
                   {/* Customer — first sub-line's customer only */}
-                  <span className="text-sm font-inter text-on-surface flex-1 truncate">
+                  <span className="text-sm font-inter text-on-surface flex-1 truncate flex items-center gap-2">
                     {group.customers[0]}
+                    {group.customerId === null && (
+                      <span className="text-[10px] font-medium bg-[#F59E0B]/10 text-[#D97706] px-1.5 py-0.5 rounded uppercase tracking-wider" title="Khách hàng này chưa có trong danh sách — vào Customers để thêm">
+                        KH mới
+                      </span>
+                    )}
                   </span>
 
                   {/* Sub-line count badge */}

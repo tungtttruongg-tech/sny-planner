@@ -45,13 +45,17 @@ function findCol(header: unknown[], keywords: string[]): number {
 
 // ── Main parser ───────────────────────────────────────────────────────────────
 
-export function parseMaterialReport(buffer: Buffer): ParsedMaterialRow[] {
+export function parseMaterialReport(buffer: Buffer, sheetType: 'HDPE' | 'MB' | 'KOREA' = 'HDPE'): ParsedMaterialRow[] {
   const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true })
 
-  // Try to find the "HDPE " sheet (trailing space is intentional in SNY files)
-  const targetName =
-    workbook.SheetNames.find((n) => n.trim().toUpperCase() === 'HDPE') ??
-    workbook.SheetNames[0]
+  // Find the target sheet
+  const targetName = workbook.SheetNames.find((n) => {
+    const norm = n.trim().toUpperCase()
+    if (sheetType === 'HDPE') return norm === 'HDPE'
+    if (sheetType === 'MB') return norm === 'M/B' || norm === 'MB'
+    if (sheetType === 'KOREA') return norm === 'KOREA'
+    return false
+  }) ?? workbook.SheetNames[0]
 
   if (!targetName) throw new Error('Excel file has no sheets.')
 

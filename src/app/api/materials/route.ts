@@ -21,9 +21,15 @@ const createMaterialSchema = z.object({
 
   minThreshold: z
     .number({ message: 'Ngưỡng tối thiểu phải là số' })
-    .min(0, 'Ngưỡng tối thiểu không được âm'),
+    .min(0, 'Ngưỡng tối thiểu không được âm')
+    .nullable()
+    .optional(),
 
   unit: z.string().default('kg'),
+  
+  group: z.enum(['HDPE', 'MB', 'KOREA']).default('KOREA'),
+  color: z.string().nullable().optional(),
+  brand: z.string().nullable().optional(),
 
   note: z
     .string()
@@ -90,10 +96,13 @@ export async function POST(req: NextRequest) {
     const material = await prisma.material.create({
       data: {
         name: data.name,
+        group: data.group,
+        color: data.color || null,
+        brand: data.brand || null,
         currentStock: data.currentStock,
         minThreshold: data.minThreshold,
         unit: data.unit,
-        ...(data.note != null && { note: data.note }),
+        note: data.note || null,
       },
     })
 

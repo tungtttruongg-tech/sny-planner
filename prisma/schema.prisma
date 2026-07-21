@@ -18,10 +18,12 @@ model ProductionOrder {
   // PI = Proforma Invoice — the primary order identifier at SNY
   piNumber     String
   // Sub-line index within a PI (0-based). A PI can have multiple fabric specs.
-  subLineIndex Int      @default(0)
-
+  subLineIndex Int      @default(0) // 0 cho đơn 1 dòng, 0..N cho đơn nhiều dòng
+  customer     String   // Tên khách hàng (vẫn giữ lại text tự do cho backward compat)
+  customerId   String?  // NEW: optional link tới Customer table
+  customerRef  Customer? @relation(fields: [customerId], references: [id])
+  
   // Order info
-  customer     String
   orderDate    DateTime
 
   // Fabric specs
@@ -95,9 +97,33 @@ model ProductionOrder {
   @@map("production_orders")
 }
 
+model Customer {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  address     String?
+  tel         String?
+  fax         String?
+  contact     String?
+  country     String?
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders      ProductionOrder[]
+}
+
+enum MaterialGroup {
+  HDPE
+  MB
+  KOREA
+}
+
 model Material {
   id           String   @id @default(cuid())
   name         String   // e.g. "MF", "UV 4%", "Tái chế", "FR", "IR"
+  group        MaterialGroup @default(KOREA)
+  color        String?  // Dùng chủ yếu cho nhóm MB
+  brand        String?  // Hãng sản xuất (cho nhóm MB)
   currentStock Decimal  @db.Decimal(10, 2)  // kg hiện có
   minThreshold Decimal? @db.Decimal(10, 2)  // ngưỡng tối thiểu cảnh báo — null = chưa đặt ngưỡng
   unit         String   @default("kg")
@@ -181,4 +207,26 @@ model KnittingDailyOutput {
   @@index([machineId])
   @@index([reportDate])
   @@map("knitting_daily_output")
+}
+
+model ExtruderDailyOutput {
+  id         String   @id @default(cuid())
+  machineId  String   // "EXT-01", "EXT-02"... (KHÔNG trùng M-001..M-040 là máy dệt)
+  reportDate DateTime // UTC midnight — timezone-independent (giống Knitting)
+  shift      String   // "D" (ca ngày) hoặc "N" (ca đêm)
+  color      String   // vd "BLACK B045 UV 2%"
+  denier     Decimal? @db.Decimal(10, 2)
+  weightKgs  Decimal  @db.Decimal(10, 2)  // cột WEIGHT trong Excel (0 là hợp lệ)
+
+  // remark tách thành 2 field riêng biệt:
+  beamNote   String?  // vd "11 BEAM ( 158 SỢI)"
+  orderRef   String?  // vd "JPY26-274" — mã PI liên quan (KHÔNG validate FK)
+
+  dataSource String   @default("import")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([machineId])
+  @@index([reportDate])
+  @@map("extruder_daily_output")
 }

@@ -165,6 +165,8 @@ export const updateOrderSchema = z.object({
     .transform((v) => v.trim())
     .optional(),
 
+  customerId: z.string().nullable().optional(),
+
   orderDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Order date must be a valid date (YYYY-MM-DD)')
@@ -313,6 +315,7 @@ export const multiLineOrderSchema = z.object({
   // Shared fields — apply to all sub-lines
   piNumber:    z.string().min(1, 'PI Number là bắt buộc').max(50).transform((v) => v.trim()),
   customer:    z.string().min(1, 'Khách hàng là bắt buộc').max(100).transform((v) => v.trim()),
+  customerId:  z.string().nullable().optional(),
   orderDate:   z.string().min(1, 'Ngày đặt hàng là bắt buộc').regex(/^\d{4}-\d{2}-\d{2}$/),
   deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   containerSize: z.string().max(50).transform(v => v.trim()).nullable().optional(),
