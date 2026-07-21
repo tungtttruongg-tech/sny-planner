@@ -2,8 +2,8 @@
 > Ground truth for all AI coding agents (Antigravity, Cursor).
 > READ THIS ENTIRE FILE before generating any code.
 > If context in this file conflicts with your judgment → this file wins.
-> Last updated: 16/07/2026
-> Last sprint DONE: Materials parser fix (nhận NVL tồn = 0) + NVL template download ✅
+> Last updated: 21/07/2026
+> Last sprint DONE: Extruder Daily Output (Sprint E1) + Warping Daily Output (Sprint E2) ✅
 > Next sprint pending: mbCode per-line + frPct Decimal + 6 req mới từ KH
 
 ---
@@ -25,7 +25,7 @@ Replace 4 disconnected Excel files with 1 system.
 Flow: Sales Order → Production Order → Machine Schedule → Material Planning.
 
 **Phase 1 (DONE):** Endusers enter data into tool. Stop using Excel.
-**Last sprint DONE:** Materials parser fix (nhận NVL tồn = 0) + NVL template download ✅
+**Last sprint DONE:** Extruder Daily Output (Sprint E1) + Warping Daily Output (Sprint E2) ✅
 **Next sprints (Must have trước G3 24-27/7):** mbCode per-line · frPct Decimal + 6 req mới từ KH.
 **Phase 2 (later):** AI automation, auto-scheduling, formula calculations, alerts.
 
@@ -157,6 +157,22 @@ Flow: Sales Order → Production Order → Machine Schedule → Material Plannin
   lazy-loaded khi expand PI Number group (1 fetch/sub-line, chỉ khi expand).
 - `scripts/clear-knitting.ts` — one-time script đã chạy 04/07/2026 để clear data test.
   Giữ lại trong repo làm audit trail. **KHÔNG chạy lại** trừ khi cần reset.
+
+### Extruder Daily Output ✅ (Sprint E1)
+- `src/lib/excel/parseExtruderReport.ts` — parser sheet EXTRUDER (UTC-safe, regex machineId, TOTAL validation).
+- `src/app/api/extruder/` — import/ (preview), import/confirm (Option B delete-then-insert), records/ (GET list), template/ (download .xlsx).
+- `src/components/materials/ImportExtruderModal.tsx` & `ExtruderTab.tsx`.
+
+### Warping Daily Output ✅ (Sprint E2)
+- `src/lib/excel/parseWarpingReport.ts` — parser sheet WARPING (UTC-safe, multi-day reset on "SNY VINA CO.,LTD.", regex `^MACHINE\s*(\d+)`, TOTAL cross-check).
+- `src/app/api/warping/` — import/ (preview), import/confirm (Option B delete-then-insert), records/ (GET list), template/ (download .xlsx).
+- `src/components/materials/ImportWarpingModal.tsx` & `WarpingTab.tsx` (hiển thị cột "Beam 1" / "Beam 2").
+- Domain terminology:
+  - `EXT-01` đến `EXT-08`: mã máy Extruder (kéo sợi)
+  - `WARP-01` đến `WARP-06`: mã máy Warping (xe/mắc sợi, khác EXT-01..08 Extruder, khác M-001..040 máy dệt)
+  - `weavingMachineRef`: số máy dệt liên quan lưu dạng text (vd "24", "25+28"), KHÔNG validate FK với bảng máy — Phase 1 chỉ hiển thị tham khảo.
+- ⚠️ PENDING open item:
+  - field `beamCount1`/`beamCount2` trong `WarpingDailyOutput` là tên PLACEHOLDER — chưa xác nhận ý nghĩa nghiệp vụ thật với SNY (Dung/Loan). KHÔNG dùng 2 field này cho bất kỳ tính toán/công thức nào ở Phase 2 cho đến khi có xác nhận và rename.
 
 ### AssignModal Sub-line Detail ✅
 - `src/app/schedule/actions.ts` — thêm subLineIndex, widthM, gsm, color,
@@ -535,6 +551,8 @@ sny-planner/
 | AssignModal Sub-line Detail | ✅ Done |
 | Order Status Badge + Filter | ✅ Done |
 | Materials parser fix + NVL template download | ✅ Done |
+| Sprint E1 — Extruder Daily Output | ✅ Done |
+| Sprint E2 — Warping Daily Output | ✅ Done |
 
 ## 9. Sprints pending — Must have trước Gate G3 (24–27/7)
 

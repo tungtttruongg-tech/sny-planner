@@ -270,3 +270,41 @@ model WarpingDailyOutput {
   @@index([reportDate])
   @@map("warping_daily_output")
 }
+
+model KnittingDailyDetail {
+  id             String   @id @default(cuid())
+
+  // Dùng LUÔN format "M-001".."M-040" (khớp trực tiếp với 40 máy dệt trên Schedule)
+  machineId      String   // "M-001" to "M-040"
+
+  reportDate     DateTime // UTC midnight (timezone-independent)
+  shift          String   // "D" (ca ngày) hoặc "N" (ca đêm)
+
+  width          Decimal? @db.Decimal(10, 2)
+  color          String   // tên màu
+  weightSpec     Decimal? @db.Decimal(10, 2) // cột weight (gsm/spec)
+  lengthM        Decimal? @db.Decimal(10, 2) // cột length(m)
+  tapeRoll       Decimal? @db.Decimal(10, 2) // cột tape/roll
+  mValue         Decimal? @db.Decimal(10, 2) // cột m
+  avgPerRoll     Decimal? @db.Decimal(10, 2) // cột average/roll
+  quantity       Decimal? @db.Decimal(10, 2) // cột quantity
+  weightKgs      Decimal  @db.Decimal(10, 2) // cột weight(kg) — 0 hợp lệ
+
+  orderRef       String?  // Mã PI / đơn hàng (nếu Remark không bắt đầu bằng "*")
+  machineNote    String?  // Ghi chú vận hành máy (nếu Remark bắt đầu bằng "*")
+
+  // Thông số năng suất & kích thước cấp máy/ngày (trích xuất từ hàng header máy)
+  machineSizeM   Decimal? @db.Decimal(10, 2) // SIZE OF MACHINE(M) (vd 6.56, 6.85, 4.6)
+  cmPerMin       Decimal? @db.Decimal(10, 2) // Qty of Netting Cm/per min (vd 96, 108, 126)
+  meterPerDay    Decimal? @db.Decimal(10, 2) // Qty of Netting Meter/per day (vd 1382.4, 1814.4)
+  operatingGrade String?                      // Operating grade (vd "A", "B")
+  totalPct       Decimal? @db.Decimal(5, 2)  // Total % (vd 98.5)
+
+  dataSource     String   @default("import")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([machineId])
+  @@index([reportDate])
+  @@map("knitting_daily_detail")
+}

@@ -20,6 +20,8 @@ import ExtruderTab from '@/components/materials/ExtruderTab'
 import ImportExtruderModal from '@/components/materials/ImportExtruderModal'
 import WarpingTab from '@/components/materials/WarpingTab'
 import ImportWarpingModal from '@/components/materials/ImportWarpingModal'
+import KnittingDetailTab from '@/components/materials/KnittingDetailTab'
+import ImportKnittingDetailModal from '@/components/materials/ImportKnittingDetailModal'
 
 // Note: metadata export is not supported in 'use client' components.
 // Page title is set via the <title> in the HTML head from layout.tsx.
@@ -106,8 +108,9 @@ export default function MaterialsPage() {
   
   const [showExtruderModal, setShowExtruderModal]       = useState(false)
   const [showWarpingModal, setShowWarpingModal]         = useState(false)
+  const [showKnittingDetailModal, setShowKnittingDetailModal] = useState(false)
   
-  const [activeTab, setActiveTab] = useState<'HDPE' | 'MB' | 'KOREA' | 'EXTRUDER' | 'WARPING'>('EXTRUDER')
+  const [activeTab, setActiveTab] = useState<'HDPE' | 'MB' | 'KOREA' | 'EXTRUDER' | 'WARPING' | 'KNITTING_DETAIL'>('EXTRUDER')
 
   // ── Fetch all materials ────────────────────────────────────────────────────
 
@@ -206,24 +209,24 @@ export default function MaterialsPage() {
       )}
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 border-b-[0.5px] border-outline-variant mb-6">
-        {(['EXTRUDER', 'WARPING', 'HDPE', 'MB', 'KOREA'] as const).map((tab) => (
+      <div className="flex gap-2 border-b-[0.5px] border-outline-variant mb-6 overflow-x-auto">
+        {(['EXTRUDER', 'WARPING', 'KNITTING_DETAIL', 'HDPE', 'MB', 'KOREA'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-[1px] ${
+            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-[1px] whitespace-nowrap ${
               activeTab === tab
                 ? 'border-primary text-primary font-semibold'
                 : 'border-transparent text-secondary hover:text-on-surface'
             }`}
           >
-            {tab === 'EXTRUDER' ? 'Extruder' : tab === 'WARPING' ? 'Warping' : tab === 'MB' ? 'Masterbatch' : tab === 'KOREA' ? 'Korea & Khác' : tab}
+            {tab === 'EXTRUDER' ? 'Extruder' : tab === 'WARPING' ? 'Warping' : tab === 'KNITTING_DETAIL' ? 'Knitting Detail' : tab === 'MB' ? 'Masterbatch' : tab === 'KOREA' ? 'Korea & Khác' : tab}
           </button>
         ))}
       </div>
 
       {/* Summary cards (Material stock - only shown for material tabs) */}
-      {(activeTab !== 'EXTRUDER' && activeTab !== 'WARPING') && (
+      {(activeTab !== 'EXTRUDER' && activeTab !== 'WARPING' && activeTab !== 'KNITTING_DETAIL') && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <SummaryCard
             label="Total Materials"
@@ -269,6 +272,11 @@ export default function MaterialsPage() {
               onImport={() => setShowWarpingModal(true)}
             />
           )}
+          {activeTab === 'KNITTING_DETAIL' && (
+            <KnittingDetailTab
+              onImport={() => setShowKnittingDetailModal(true)}
+            />
+          )}
           {activeTab === 'HDPE' && (
             <HDPETab
               materials={activeMaterials}
@@ -305,7 +313,7 @@ export default function MaterialsPage() {
       {/* Add modal */}
       {showAddModal && (
         <AddMaterialModal
-          defaultGroup={(activeTab === 'EXTRUDER' || activeTab === 'WARPING') ? 'HDPE' : activeTab}
+          defaultGroup={(activeTab === 'EXTRUDER' || activeTab === 'WARPING' || activeTab === 'KNITTING_DETAIL') ? 'HDPE' : activeTab}
           onAdded={() => { fetchMaterials(); setShowAddModal(false) }}
           onClose={() => setShowAddModal(false)}
         />
@@ -332,6 +340,14 @@ export default function MaterialsPage() {
         <ImportWarpingModal
           onImported={() => {}}
           onClose={() => setShowWarpingModal(false)}
+        />
+      )}
+
+      {/* Import Knitting Detail Report modal */}
+      {showKnittingDetailModal && (
+        <ImportKnittingDetailModal
+          onImported={() => {}}
+          onClose={() => setShowKnittingDetailModal(false)}
         />
       )}
 
