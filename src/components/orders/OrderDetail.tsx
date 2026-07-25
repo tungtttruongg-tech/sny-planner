@@ -473,6 +473,15 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
               mono
             />
           )}
+          <ViewField
+            label="Nhu cầu sợi (kg)"
+            value={
+              !currentOrder.isDraft && currentOrder.requiredYarnKg != null
+                ? parseFloat(currentOrder.requiredYarnKg).toLocaleString('vi-VN', { maximumFractionDigits: 1 })
+                : null
+            }
+            mono
+          />
           {currentOrder.qtySqm != null && (
             <ViewField
               label="Diện tích (m²)"
