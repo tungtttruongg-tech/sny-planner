@@ -64,10 +64,15 @@ export default function OrderTable({ orders }: OrderTableProps) {
     }
 
     if (!q) return result
+    const isNum = /^\d+$/.test(q)
+    const numQuery = isNum ? parseInt(q, 10) : null
+
     return result.filter(
       (o) =>
         o.piNumber.toLowerCase().includes(q) ||
-        o.customer.toLowerCase().includes(q),
+        o.customer.toLowerCase().includes(q) ||
+        (o.color != null && o.color.toLowerCase().includes(q)) ||
+        (numQuery !== null && o.gsm === numQuery),
     )
   }, [ordersWithStatus, query, statusFilter])
 
@@ -112,9 +117,9 @@ export default function OrderTable({ orders }: OrderTableProps) {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search PI Number or Customer..."
+            placeholder="Tìm theo PI Number, Khách hàng, Màu sắc, GSM..."
             className="w-full bg-surface-container-lowest border-[0.5px] border-outline-variant rounded pl-9 pr-4 py-[10px] text-body-md font-noto text-on-surface placeholder:text-outline focus:outline-none focus:border-b-2 focus:border-primary transition-colors"
-            aria-label="Search orders by PI Number or Customer"
+            aria-label="Search orders by PI Number, Customer, Color, GSM"
           />
         </div>
 

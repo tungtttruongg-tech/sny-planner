@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { isSameDay, startOfDay } from 'date-fns'
 import AssignModal from '@/components/schedule/AssignModal'
 import DetailModal, { AssignmentDetail } from '@/components/schedule/DetailModal'
+import ImportScheduleModal from '@/components/schedule/ImportScheduleModal'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ export default function SchedulePage() {
   // Modals state
   const [isAssignOpen, setIsAssignOpen] = useState(false)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [isImportOpen, setIsImportOpen] = useState(false)
   const [selectedMachine, setSelectedMachine] = useState('')
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentDetail | null>(null)
@@ -121,6 +123,13 @@ export default function SchedulePage() {
         </div>
         <div className="flex items-center gap-md">
           {isLoading && <span className="text-label-sm text-secondary animate-pulse">Loading...</span>}
+          <button
+            onClick={() => setIsImportOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container border border-outline-variant hover:bg-surface-container-high text-xs font-medium text-on-surface transition-colors"
+          >
+            <span className="material-symbols-outlined text-[16px] text-primary">upload_file</span>
+            Import Lịch tháng
+          </button>
           <p className="text-label-sm font-inter text-secondary">
             {totalDays} days · {MACHINES.length} machines
           </p>
@@ -221,6 +230,12 @@ export default function SchedulePage() {
         onClose={() => setIsDetailOpen(false)}
         assignment={selectedAssignment}
         onSuccess={fetchAssignments}
+      />
+
+      <ImportScheduleModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        onImported={fetchAssignments}
       />
     </div>
   )

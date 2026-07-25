@@ -30,6 +30,7 @@ interface LineItem {
   rollLength: string
   pieceLength: string
   uvPct: string
+  frFlag: boolean     // new flag: frFlag = true → frPct required > 0
   frPct: string
   mbCode: string
   requiresPacking: boolean
@@ -116,6 +117,7 @@ function newLine(): LineItem {
     rollLength: '',
     pieceLength: '',
     uvPct: '',
+    frFlag: false,
     frPct: '',
     mbCode: '',
     requiresPacking: false,
@@ -246,6 +248,43 @@ export default function MultiLineOrderForm() {
     return () => clearTimeout(timer)
   }, [customer])
 
+  // ── ColorPreset state ─────────────────────────────────────────────────────
+  interface ColorPresetItem {
+    id: string
+    color: string
+    mbCode?: string | null
+    mbSupplier?: string | null
+    wale?: number | null
+    cours?: number | null
+    eyeletColor?: string | null
+    eyeletLines?: number | null
+    note?: string | null
+  }
+  const [colorPresets, setColorPresets] = useState<ColorPresetItem[]>([])
+  const [activeColorDropdownLineId, setActiveColorDropdownLineId] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!customer.trim()) {
+      setColorPresets([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const url = customerId
+          ? `/api/customers/color-presets?customerId=${customerId}`
+          : `/api/customers/color-presets?customerName=${encodeURIComponent(customer.trim())}`
+        const res = await fetch(url)
+        if (res.ok) {
+          const data = await res.json()
+          setColorPresets(data)
+        }
+      } catch {
+        setColorPresets([])
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [customer, customerId])
+
   // ── Line mutation helpers ─────────────────────────────────────────────────
 
   const addLine = () => setLines((prev) => [...prev, copyLine(prev[prev.length - 1])])
@@ -282,6 +321,13 @@ export default function MultiLineOrderForm() {
       if (!line.widthM || isNaN(w) || w <= 0) errs[`${p}.widthM`] = 'Khổ phải lớn hơn 0'
       if (!line.color.trim())                  errs[`${p}.color`]  = 'Màu là bắt buộc'
       if (!line.gsm || isNaN(gsm) || gsm <= 0) errs[`${p}.gsm`]   = 'GSM phải lớn hơn 0'
+
+      if (line.frFlag) {
+        const fr = parseFloat(line.frPct)
+        if (!line.frPct || isNaN(fr) || fr <= 0) {
+          errs[`${p}.frPct`] = 'FR% phải lớn hơn 0 khi chọn chống cháy (FR)'
+        }
+      }
 
       if (line.orderType === 'meters') {
         const l = parseFloat(line.lengthM)
@@ -341,7 +387,8 @@ export default function MultiLineOrderForm() {
           ...(line.pieceLength && { pieceLength: parseFloat(line.pieceLength) }),
         }),
         uvPct:      line.uvPct ? parseFloat(line.uvPct) : undefined,
-        frPct:      line.frPct ? parseFloat(line.frPct) : undefined,
+        frFlag:     line.frFlag,
+        frPct:      line.frFlag && line.frPct ? parseFloat(line.frPct) : undefined,
         mbCode:     line.mbCode.trim() || undefined,
         requiresPacking: line.requiresPacking,
         lineNote:   line.lineNote.trim() || undefined,
@@ -578,26 +625,66 @@ export default function MultiLineOrderForm() {
                 </button>
               </div>
 
-              {/* Required fields grid */}
+              {/* Required fields grid — Row 1 & Row 2 per Spec 1.1 */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-3">
 
-                {/* Color */}
-                <div>
+                {/* ROW 1: Màu (Color) */}
+                <div className="relative">
                   <Label required>Màu (Color)</Label>
                   <input
                     id={`ml-line-${line.id}-color`}
                     type="text"
                     placeholder="e.g. BLACK"
                     value={line.color}
-                    onChange={(e) => updateLine(line.id, { color: e.target.value })}
+                    onChange={(e) => {
+                      updateLine(line.id, { color: e.target.value })
+                      setActiveColorDropdownLineId(line.id)
+                    }}
+                    onFocus={() => setActiveColorDropdownLineId(line.id)}
+                    onBlur={() => setTimeout(() => setActiveColorDropdownLineId(null), 200)}
                     className={inputCls(!!fieldErrors[`${p}.color`])}
+                    autoComplete="off"
                   />
+                  {activeColorDropdownLineId === line.id && colorPresets.length > 0 && (
+                    <div className="absolute z-20 w-full mt-1 bg-surface-container-lowest border-[0.5px] border-outline-variant rounded-md shadow-lg max-h-48 overflow-auto">
+                      <div className="px-2 py-1 text-[10px] font-semibold text-secondary bg-surface-container-low uppercase tracking-wider">
+                        Màu mẫu ({customer.trim()})
+                      </div>
+                      {colorPresets
+                        .filter((cp) => !line.color.trim() || cp.color.toLowerCase().includes(line.color.trim().toLowerCase()))
+                        .map((preset) => (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            className="w-full text-left px-3 py-1.5 text-xs text-on-surface hover:bg-surface-container-low transition-colors flex items-center justify-between"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              const patch: Partial<LineItem> = { color: preset.color }
+                              if (!line.mbCode.trim() && preset.mbCode) patch.mbCode = preset.mbCode
+                              if (!line.needleCount && preset.wale) patch.needleCount = String(preset.wale)
+                              if (preset.eyeletLines) {
+                                patch.hasEyelet = true
+                                if (!line.eyeletLines) patch.eyeletLines = String(preset.eyeletLines)
+                                if (!line.eyeletColor.trim() && preset.eyeletColor) patch.eyeletColor = preset.eyeletColor
+                              }
+                              updateLine(line.id, patch)
+                              setActiveColorDropdownLineId(null)
+                            }}
+                          >
+                            <span className="font-semibold text-primary">{preset.color}</span>
+                            <span className="text-[10px] text-secondary font-mono">
+                              {preset.mbCode ? `MB: ${preset.mbCode}` : ''} {preset.wale ? `· Kim: ${preset.wale}` : ''} {preset.eyeletLines ? `· Khoen: ${preset.eyeletLines}L` : ''}
+                            </span>
+                          </button>
+                        ))}
+                    </div>
+                  )}
                   {fieldErrors[`${p}.color`] && (
                     <p className="text-xs text-error mt-1">{fieldErrors[`${p}.color`]}</p>
                   )}
                 </div>
 
-                {/* Width */}
+                {/* ROW 1: Khổ (m) */}
                 <div>
                   <Label required>Khổ (m)</Label>
                   <input
@@ -613,38 +700,23 @@ export default function MultiLineOrderForm() {
                   )}
                 </div>
 
-                {/* GSM — per-line (moved from shared) */}
-                <div>
-                  <Label required>GSM</Label>
-                  <input
-                    id={`ml-line-${line.id}-gsm`}
-                    type="number" min={1} max={500} step={1}
-                    placeholder="e.g. 95"
-                    value={line.gsm}
-                    onChange={(e) => updateLine(line.id, { gsm: e.target.value })}
-                    className={monoInputCls(!!fieldErrors[`${p}.gsm`])}
-                  />
-                  {fieldErrors[`${p}.gsm`] && (
-                    <p className="text-xs text-error mt-1">{fieldErrors[`${p}.gsm`]}</p>
-                  )}
-                </div>
-
-                {/* Order Type */}
-                <div>
-                  <Label required>Kiểu đơn</Label>
-                  <select
-                    id={`ml-line-${line.id}-orderType`}
-                    value={line.orderType}
-                    onChange={(e) => updateLine(line.id, { orderType: e.target.value as OrderType })}
-                    className={inputCls()}
-                  >
-                    <option value="rolls">Theo cuộn</option>
-                    <option value="meters">Tổng mét</option>
-                    <option value="pieces">Gia công tấm</option>
-                  </select>
-                </div>
-
-                {/* meters → Length */}
+                {/* ROW 1: Length field according to OrderType */}
+                {line.orderType === 'rolls' && (
+                  <div>
+                    <Label required>Mét/cuộn</Label>
+                    <input
+                      id={`ml-line-${line.id}-rollLength`}
+                      type="number" min={0.1} step={0.01}
+                      placeholder="e.g. 50"
+                      value={line.rollLength}
+                      onChange={(e) => updateLine(line.id, { rollLength: e.target.value })}
+                      className={monoInputCls(!!fieldErrors[`${p}.rollLength`])}
+                    />
+                    {fieldErrors[`${p}.rollLength`] && (
+                      <p className="text-xs text-error mt-1">{fieldErrors[`${p}.rollLength`]}</p>
+                    )}
+                  </div>
+                )}
                 {line.orderType === 'meters' && (
                   <div>
                     <Label required>Chiều dài (m)</Label>
@@ -661,80 +733,95 @@ export default function MultiLineOrderForm() {
                     )}
                   </div>
                 )}
-
-                {/* rolls → qty + rollLength */}
-                {line.orderType === 'rolls' && (
-                  <>
-                    <div>
-                      <Label required>Số cuộn</Label>
-                      <input
-                        id={`ml-line-${line.id}-qty`}
-                        type="number" min={1} step={1}
-                        placeholder="e.g. 200"
-                        value={line.qty}
-                        onChange={(e) => updateLine(line.id, { qty: e.target.value })}
-                        className={monoInputCls(!!fieldErrors[`${p}.qty`])}
-                      />
-                      {fieldErrors[`${p}.qty`] && (
-                        <p className="text-xs text-error mt-1">{fieldErrors[`${p}.qty`]}</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label required>Mét/cuộn</Label>
-                      <input
-                        id={`ml-line-${line.id}-rollLength`}
-                        type="number" min={0.1} step={0.01}
-                        placeholder="e.g. 50"
-                        value={line.rollLength}
-                        onChange={(e) => updateLine(line.id, { rollLength: e.target.value })}
-                        className={monoInputCls(!!fieldErrors[`${p}.rollLength`])}
-                      />
-                      {fieldErrors[`${p}.rollLength`] && (
-                        <p className="text-xs text-error mt-1">{fieldErrors[`${p}.rollLength`]}</p>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {/* pieces → qty + pieceLength */}
                 {line.orderType === 'pieces' && (
-                  <>
-                    <div>
-                      <Label required>Số tấm</Label>
-                      <input
-                        id={`ml-line-${line.id}-qty-pieces`}
-                        type="number" min={1} step={1}
-                        placeholder="e.g. 4200"
-                        value={line.qty}
-                        onChange={(e) => updateLine(line.id, { qty: e.target.value })}
-                        className={monoInputCls(!!fieldErrors[`${p}.qty`])}
-                      />
-                      {fieldErrors[`${p}.qty`] && (
-                        <p className="text-xs text-error mt-1">{fieldErrors[`${p}.qty`]}</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label required>Chiều dài tấm (m)</Label>
-                      <input
-                        id={`ml-line-${line.id}-pieceLength`}
-                        type="number" min={0.01} step={0.01}
-                        placeholder="e.g. 2.44"
-                        value={line.pieceLength}
-                        onChange={(e) => updateLine(line.id, { pieceLength: e.target.value })}
-                        className={monoInputCls(!!fieldErrors[`${p}.pieceLength`])}
-                      />
-                      {fieldErrors[`${p}.pieceLength`] && (
-                        <p className="text-xs text-error mt-1">{fieldErrors[`${p}.pieceLength`]}</p>
-                      )}
-                    </div>
-                  </>
+                  <div>
+                    <Label required>Chiều dài tấm (m)</Label>
+                    <input
+                      id={`ml-line-${line.id}-pieceLength`}
+                      type="number" min={0.01} step={0.01}
+                      placeholder="e.g. 2.44"
+                      value={line.pieceLength}
+                      onChange={(e) => updateLine(line.id, { pieceLength: e.target.value })}
+                      className={monoInputCls(!!fieldErrors[`${p}.pieceLength`])}
+                    />
+                    {fieldErrors[`${p}.pieceLength`] && (
+                      <p className="text-xs text-error mt-1">{fieldErrors[`${p}.pieceLength`]}</p>
+                    )}
+                  </div>
                 )}
+
+                {/* ROW 1: Kiểu đơn */}
+                <div>
+                  <Label required>Kiểu đơn</Label>
+                  <select
+                    id={`ml-line-${line.id}-orderType`}
+                    value={line.orderType}
+                    onChange={(e) => updateLine(line.id, { orderType: e.target.value as OrderType })}
+                    className={inputCls()}
+                  >
+                    <option value="rolls">Theo cuộn</option>
+                    <option value="meters">Tổng mét</option>
+                    <option value="pieces">Gia công tấm</option>
+                  </select>
+                </div>
+
+                {/* ROW 2: GSM */}
+                <div>
+                  <Label required>GSM</Label>
+                  <input
+                    id={`ml-line-${line.id}-gsm`}
+                    type="number" min={1} max={500} step={1}
+                    placeholder="e.g. 95"
+                    value={line.gsm}
+                    onChange={(e) => updateLine(line.id, { gsm: e.target.value })}
+                    className={monoInputCls(!!fieldErrors[`${p}.gsm`])}
+                  />
+                  {fieldErrors[`${p}.gsm`] && (
+                    <p className="text-xs text-error mt-1">{fieldErrors[`${p}.gsm`]}</p>
+                  )}
+                </div>
+
+                {/* ROW 2: Qty (Số cuộn / Số tấm) */}
+                {line.orderType === 'rolls' && (
+                  <div>
+                    <Label required>Số cuộn</Label>
+                    <input
+                      id={`ml-line-${line.id}-qty`}
+                      type="number" min={1} step={1}
+                      placeholder="e.g. 200"
+                      value={line.qty}
+                      onChange={(e) => updateLine(line.id, { qty: e.target.value })}
+                      className={monoInputCls(!!fieldErrors[`${p}.qty`])}
+                    />
+                    {fieldErrors[`${p}.qty`] && (
+                      <p className="text-xs text-error mt-1">{fieldErrors[`${p}.qty`]}</p>
+                    )}
+                  </div>
+                )}
+                {line.orderType === 'pieces' && (
+                  <div>
+                    <Label required>Số tấm</Label>
+                    <input
+                      id={`ml-line-${line.id}-qty-pieces`}
+                      type="number" min={1} step={1}
+                      placeholder="e.g. 4200"
+                      value={line.qty}
+                      onChange={(e) => updateLine(line.id, { qty: e.target.value })}
+                      className={monoInputCls(!!fieldErrors[`${p}.qty`])}
+                    />
+                    {fieldErrors[`${p}.qty`] && (
+                      <p className="text-xs text-error mt-1">{fieldErrors[`${p}.qty`]}</p>
+                    )}
+                  </div>
+                )}
+                {line.orderType === 'meters' && <div></div>}
+
               </div>
 
               {/* Technical specs + optional fields */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pt-2 border-t-[0.5px] border-outline-variant/50">
 
-                {/* Mesh Type — per-line (moved from shared) */}
+                {/* Mesh Type */}
                 <div>
                   <Label>Loại lưới</Label>
                   <input
@@ -747,7 +834,7 @@ export default function MultiLineOrderForm() {
                   />
                 </div>
 
-                {/* Needle Count — per-line (moved from shared) */}
+                {/* Needle Count */}
                 <div>
                   <Label>Số kim</Label>
                   <input
@@ -760,7 +847,7 @@ export default function MultiLineOrderForm() {
                   />
                 </div>
 
-                {/* Beam Count — per-line (moved from shared) */}
+                {/* Beam Count */}
                 <div>
                   <Label>Số dàn</Label>
                   <input
@@ -786,7 +873,7 @@ export default function MultiLineOrderForm() {
                   />
                 </div>
 
-                {/* MB Code — per-line */}
+                {/* MB Code */}
                 <div>
                   <Label>Mã màu (MB Code)</Label>
                   <input
@@ -799,18 +886,45 @@ export default function MultiLineOrderForm() {
                   />
                 </div>
 
-                {/* FR% — replaces FR checkbox */}
-                <div>
-                  <Label>FR %</Label>
-                  <input
-                    id={`ml-line-${line.id}-frPct`}
-                    type="number" min={0} max={100} step={0.01}
-                    placeholder="e.g. 6.5"
-                    value={line.frPct}
-                    onChange={(e) => updateLine(line.id, { frPct: e.target.value })}
-                    className={monoInputCls()}
-                  />
+                {/* FR Flag Checkbox */}
+                <div className="flex flex-col justify-end pb-1">
+                  <div className="flex items-center gap-2 py-2">
+                    <input
+                      id={`ml-line-${line.id}-frFlag`}
+                      type="checkbox"
+                      checked={line.frFlag}
+                      onChange={(e) => {
+                        const checked = e.target.checked
+                        updateLine(line.id, {
+                          frFlag: checked,
+                          frPct: checked ? line.frPct : '',
+                        })
+                      }}
+                      className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
+                    />
+                    <label htmlFor={`ml-line-${line.id}-frFlag`} className="text-sm font-noto text-on-surface cursor-pointer select-none">
+                      Chống cháy (FR)
+                    </label>
+                  </div>
                 </div>
+
+                {/* FR% — shown when frFlag is checked */}
+                {line.frFlag && (
+                  <div>
+                    <Label required>FR %</Label>
+                    <input
+                      id={`ml-line-${line.id}-frPct`}
+                      type="number" min={0} max={100} step={0.01}
+                      placeholder="e.g. 6.5"
+                      value={line.frPct}
+                      onChange={(e) => updateLine(line.id, { frPct: e.target.value })}
+                      className={monoInputCls(!!fieldErrors[`${p}.frPct`])}
+                    />
+                    {fieldErrors[`${p}.frPct`] && (
+                      <p className="text-xs text-error mt-1">{fieldErrors[`${p}.frPct`]}</p>
+                    )}
+                  </div>
+                )}
                 {/* Requires Packing */}
                 <div className="flex flex-col justify-end pb-1">
                   <div className="flex items-center gap-2 py-2">

@@ -5,11 +5,12 @@
 // Collapsed by default; each group expands to show per-sub-line details.
 // Searchable by PI Number or Customer (case-insensitive).
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { SerializedProductionOrder } from '@/types'
 import { OrderStatus, calcOrderStatus } from '@/lib/orderStatus'
 import OrderStatusBadge from './OrderStatusBadge'
 import DraftBadge from './DraftBadge'
+import BulkEditPOModal from '@/components/orders/BulkEditPOModal'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -20,9 +21,12 @@ interface PIGroup {
   orderDate: string       // ISO string of the most recent sub-line's orderDate
   deliveryDate: string | null
   containerSize: string | null
+  description: string | null
+  remark: string | null
   subLines: SerializedProductionOrder[]
   totalQtySqm: number | null
   totalWeightKgs: number | null
+  totalRequiredYarnKg: number | null
   status: OrderStatus
   hasDraft: boolean
 }
@@ -54,6 +58,7 @@ function groupOrders(orders: SerializedProductionOrder[]): PIGroup[] {
 
     let totalQtySqm: number | null = null
     let totalWeightKgs: number | null = null
+    let totalRequiredYarnKg: number | null = null
 
     // Skip draft/incomplete sub-lines in group total weight calculations
     for (const s of subLines) {
@@ -63,6 +68,9 @@ function groupOrders(orders: SerializedProductionOrder[]): PIGroup[] {
       if (!s.isDraft && s.totalWeightKgs != null) {
         totalWeightKgs = (totalWeightKgs ?? 0) + parseFloat(s.totalWeightKgs)
       }
+      if (!s.isDraft && s.requiredYarnKg != null) {
+        totalRequiredYarnKg = (totalRequiredYarnKg ?? 0) + parseFloat(s.requiredYarnKg)
+      }
     }
 
     const hasDraft = subLines.some(s => s.isDraft)
@@ -71,9 +79,11 @@ function groupOrders(orders: SerializedProductionOrder[]): PIGroup[] {
     
     const deliveryDate = subLines[0].deliveryDate
     const containerSize = subLines[0].containerSize
+    const description = subLines[0].description
+    const remark = subLines[0].remark
     const customerId = subLines[0].customerId || null
 
-    groups.push({ piNumber, customers, customerId, orderDate, deliveryDate, containerSize, subLines, totalQtySqm, totalWeightKgs, status, hasDraft })
+    groups.push({ piNumber, customers, customerId, orderDate, deliveryDate, containerSize, description, remark, subLines, totalQtySqm, totalWeightKgs, totalRequiredYarnKg, status, hasDraft })
   }
 
   // Sort groups by most recent orderDate descending
@@ -237,6 +247,19 @@ export default function POSummaryTable({ orders }: Props) {
   const [expandedPIs, setExpandedPIs]   = useState<Set<string>>(new Set())
   // progress: keyed by orderId — lazy-loaded when a PI group is expanded
   const [progress, setProgress]         = useState<ProgressMap>({})
+  const [journeyMap, setJourneyMap]     = useState<Record<string, { extruderWeightKg: number; warpingWeightKg: number; hasUnlinkedData: boolean }>>({})
+  const [bulkEditPI, setBulkEditPI]     = useState<{ piNumber: string; group: PIGroup } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/orders/journey-summary')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.journeyMap) {
+          setJourneyMap(data.journeyMap)
+        }
+      })
+      .catch((err) => console.error('Error fetching journey summary:', err))
+  }, [])
 
   const groups = useMemo(() => groupOrders(orders), [orders])
 
@@ -337,10 +360,17 @@ export default function POSummaryTable({ orders }: Props) {
                 className="bg-surface-container-lowest border-[0.5px] border-outline-variant rounded-xl overflow-hidden"
               >
                 {/* Group header — click to expand/collapse */}
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => togglePI(group.piNumber, group.subLines)}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container-low transition-colors text-left"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      togglePI(group.piNumber, group.subLines)
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container-low transition-colors text-left cursor-pointer select-none"
                 >
                   {/* Chevron */}
                   <span
@@ -417,11 +447,103 @@ export default function POSummaryTable({ orders }: Props) {
                       {group.containerSize}
                     </span>
                   )}
-                </button>
+
+                  {/* Nút Sửa chung PO */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setBulkEditPI({ piNumber: group.piNumber, group })
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 text-xs font-medium transition-colors shrink-0"
+                    title="Sửa thông tin chung cho tất cả dòng hàng của PO này"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">edit_note</span>
+                    Sửa chung PO
+                  </button>
+                </div>
 
                 {/* Expanded sub-lines */}
                 {isOpen && (
                   <div className="border-t-[0.5px] border-outline-variant">
+                    {/* Order Journey bar — only shown when totalRequiredYarnKg > 0 */}
+                    {group.totalRequiredYarnKg != null && group.totalRequiredYarnKg > 0 && (
+                      <div className="bg-surface-container-low px-4 py-2.5 border-b border-outline-variant/60 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-primary text-[18px]">route</span>
+                          <span className="text-xs font-inter font-semibold text-on-surface uppercase tracking-wider">
+                            Hành trình sản xuất <span className="normal-case font-normal text-secondary">(Nhu cầu sợi: {fmt(group.totalRequiredYarnKg)} kg)</span>:
+                          </span>
+                        </div>
+
+                        {(() => {
+                          const info = journeyMap[group.piNumber]
+                          const reqKg = group.totalRequiredYarnKg!
+                          const extKg = info?.extruderWeightKg || 0
+                          const warpKg = info?.warpingWeightKg || 0
+                          const hasUnlinked = info?.hasUnlinkedData || false
+
+                          const extPct = Math.min(100, (extKg / reqKg) * 100)
+                          const warpPct = Math.min(100, (warpKg / reqKg) * 100)
+
+                          return (
+                            <div className="flex items-center gap-4 text-xs font-inter flex-wrap">
+                              {/* Kéo sợi */}
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-medium text-secondary">Kéo:</span>
+                                {extKg > 0 ? (
+                                  <span className="font-mono font-semibold text-primary">
+                                    {extPct.toFixed(1)}% <span className="text-secondary font-normal">({fmt(extKg)} kg)</span>
+                                  </span>
+                                ) : hasUnlinked ? (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-medium bg-[#F59E0B]/10 text-[#B45309] px-2 py-0.5 rounded cursor-help"
+                                    title="Có báo cáo SX ghi PI này nhưng chưa xác định chính xác dòng nào — kiểm tra tay tại tab Extruder/Warping/Knitting"
+                                  >
+                                    ⚠️ Có dữ liệu chưa liên kết
+                                  </span>
+                                ) : (
+                                  <span className="text-outline">0% - Chưa sản xuất</span>
+                                )}
+                              </div>
+
+                              {/* Cuốn */}
+                              <div className="flex items-center gap-1.5 border-l border-outline-variant/50 pl-3">
+                                <span className="font-medium text-secondary">Cuốn:</span>
+                                {warpKg > 0 ? (
+                                  <span className="font-mono font-semibold text-primary">
+                                    {warpPct.toFixed(1)}% <span className="text-secondary font-normal">({fmt(warpKg)} kg)</span>
+                                  </span>
+                                ) : hasUnlinked ? (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-medium bg-[#F59E0B]/10 text-[#B45309] px-2 py-0.5 rounded cursor-help"
+                                    title="Có báo cáo SX ghi PI này nhưng chưa xác định chính xác dòng nào — kiểm tra tay tại tab Extruder/Warping/Knitting"
+                                  >
+                                    ⚠️ Có dữ liệu chưa liên kết
+                                  </span>
+                                ) : (
+                                  <span className="text-outline">0% - Chưa sản xuất</span>
+                                )}
+                              </div>
+
+                              {/* Dệt */}
+                              <div className="flex items-center gap-1.5 border-l border-outline-variant/50 pl-3">
+                                <span className="font-medium text-secondary">Dệt:</span>
+                                <span className="text-secondary font-medium">Theo dõi theo dòng bên dưới</span>
+                                {hasUnlinked && (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-medium bg-[#F59E0B]/10 text-[#B45309] px-1.5 py-0.5 rounded cursor-help"
+                                    title="Có báo cáo SX ghi PI này nhưng chưa xác định chính xác dòng nào — kiểm tra tay tại tab Extruder/Warping/Knitting"
+                                  >
+                                    ⚠️ Có dữ liệu chưa liên kết
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    )}
                     <SubLineTable subLines={group.subLines} progress={progress} />
                   </div>
                 )}
@@ -429,6 +551,23 @@ export default function POSummaryTable({ orders }: Props) {
             )
           })}
         </div>
+      )}
+
+      {bulkEditPI && (
+        <BulkEditPOModal
+          isOpen={!!bulkEditPI}
+          piNumber={bulkEditPI.piNumber}
+          initialCustomer={bulkEditPI.group.customers[0] || ''}
+          initialOrderDate={bulkEditPI.group.orderDate}
+          initialDeliveryDate={bulkEditPI.group.deliveryDate || undefined}
+          initialContainerSize={bulkEditPI.group.containerSize || undefined}
+          initialDescription={bulkEditPI.group.description || undefined}
+          initialRemark={bulkEditPI.group.remark || undefined}
+          onClose={() => setBulkEditPI(null)}
+          onSuccess={() => {
+            window.location.reload()
+          }}
+        />
       )}
     </div>
   )

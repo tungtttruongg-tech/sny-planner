@@ -285,31 +285,42 @@ export type UpdateOrderOutput = z.output<typeof updateOrderSchema>
 // Used by /api/orders/multi-line POST and the MultiLineOrderForm component.
 // Shared fields apply to ALL sub-lines; per-line fields are in the `lines` array.
 
-const lineSchema = z.object({
-  color:       z.string().min(1, 'Màu là bắt buộc').max(50).transform((v) => v.trim().toUpperCase()),
-  widthM:      z.number().gt(0, 'Khổ phải lớn hơn 0').max(20),
-  gsm:         z.number().int().gt(0, 'GSM phải lớn hơn 0').max(500),
-  orderType:   z.enum(['meters', 'rolls', 'pieces']).default('rolls'),
-  lengthM:     z.number().gt(0).max(100_000).nullable().optional(),
-  qty:         z.number().int().gt(0).nullable().optional(),
-  rollLength:  z.number().gt(0).nullable().optional(),
-  pieceLength: z.number().gt(0).nullable().optional(),
-  uvPct:       z.number().min(0).max(100).nullable().optional(),
-  frFlag:      z.boolean().default(false),
-  frPct:       z.number().min(0).max(100).nullable().optional(),
-  requiresPacking: z.boolean().default(false),
-  lineNote:    z.string().max(200).transform(v => v.trim()).nullable().optional(),
-  hasEyelet:   z.boolean().default(false),
-  eyeletColor: z.string().max(50).nullable().optional(),
-  // Per-line tech specs (moved from shared section)
-  mbCode:      z.string().max(50).transform((v) => v.trim()).nullable().optional(),
-  meshType:    z.string().max(100).transform((v) => v.trim()).nullable().optional(),
-  needleCount: z.number().int().positive().nullable().optional(),
-  beamCount:   z.number().int().positive().nullable().optional(),
-  // New eyelet spec fields
-  eyeletLines: z.number().int().positive().nullable().optional(),
-  eyeletSpec:  z.string().max(200).nullable().optional(),
-})
+const lineSchema = z
+  .object({
+    color:       z.string().min(1, 'Màu là bắt buộc').max(50).transform((v) => v.trim().toUpperCase()),
+    widthM:      z.number().gt(0, 'Khổ phải lớn hơn 0').max(20),
+    gsm:         z.number().int().gt(0, 'GSM phải lớn hơn 0').max(500),
+    orderType:   z.enum(['meters', 'rolls', 'pieces']).default('rolls'),
+    lengthM:     z.number().gt(0).max(100_000).nullable().optional(),
+    qty:         z.number().int().gt(0).nullable().optional(),
+    rollLength:  z.number().gt(0).nullable().optional(),
+    pieceLength: z.number().gt(0).nullable().optional(),
+    uvPct:       z.number().min(0).max(100).nullable().optional(),
+    frFlag:      z.boolean().default(false),
+    frPct:       z.number().min(0, 'FR% phải từ 0 đến 100').max(100, 'FR% phải từ 0 đến 100').nullable().optional(),
+    requiresPacking: z.boolean().default(false),
+    lineNote:    z.string().max(200).transform(v => v.trim()).nullable().optional(),
+    hasEyelet:   z.boolean().default(false),
+    eyeletColor: z.string().max(50).nullable().optional(),
+    mbCode:      z.string().max(50).transform((v) => v.trim()).nullable().optional(),
+    meshType:    z.string().max(100).transform((v) => v.trim()).nullable().optional(),
+    needleCount: z.number().int().positive().nullable().optional(),
+    beamCount:   z.number().int().positive().nullable().optional(),
+    eyeletLines: z.number().int().positive().nullable().optional(),
+    eyeletSpec:  z.string().max(200).nullable().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.frFlag && (data.frPct == null || data.frPct <= 0)) {
+        return false
+      }
+      return true
+    },
+    {
+      message: 'FR% phải lớn hơn 0 khi chọn chống cháy (FR)',
+      path: ['frPct'],
+    }
+  )
 
 export const multiLineOrderSchema = z.object({
   // Shared fields — apply to all sub-lines

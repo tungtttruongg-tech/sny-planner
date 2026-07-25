@@ -134,7 +134,7 @@ export async function PATCH(
       select: { widthM: true, lengthM: true, gsm: true, qty: true, rollLength: true, pieceLength: true, orderType: true },
     })
     if (current) {
-      const { qtySqm, totalWeightKgs } = calculateOrderWeight({
+      const { qtySqm, totalWeightKgs, requiredYarnKg } = calculateOrderWeight({
         orderType:   (updateData.orderType   ?? current.orderType)   as string,
         widthM:      (updateData.widthM      ?? current.widthM)      as number,
         lengthM:     (updateData.lengthM     ?? current.lengthM)     as number,
@@ -145,6 +145,7 @@ export async function PATCH(
       })
       updateData.qtySqm         = qtySqm
       updateData.totalWeightKgs = totalWeightKgs
+      updateData.requiredYarnKg = requiredYarnKg
     }
   }
 

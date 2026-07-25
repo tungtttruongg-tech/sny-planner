@@ -16,6 +16,7 @@ export interface OrderWeightResult {
   totalMeters: number | null
   qtySqm: number | null
   totalWeightKgs: number | null
+  requiredYarnKg: number | null
 }
 
 /**
@@ -43,20 +44,21 @@ export function calculateOrderWeight(input: OrderWeightInput): OrderWeightResult
   }
 
   if (totalMeters == null || isNaN(totalMeters) || totalMeters <= 0) {
-    return { totalMeters: null, qtySqm: null, totalWeightKgs: null }
+    return { totalMeters: null, qtySqm: null, totalWeightKgs: null, requiredYarnKg: null }
   }
 
   if (input.widthM == null || isNaN(input.widthM) || input.widthM <= 0) {
-    return { totalMeters, qtySqm: null, totalWeightKgs: null }
+    return { totalMeters, qtySqm: null, totalWeightKgs: null, requiredYarnKg: null }
   }
 
   const qtySqm = input.widthM * totalMeters
 
   if (input.gsm == null || isNaN(input.gsm) || input.gsm <= 0) {
-    return { totalMeters, qtySqm, totalWeightKgs: null }
+    return { totalMeters, qtySqm, totalWeightKgs: null, requiredYarnKg: null }
   }
 
   const totalWeightKgs = (qtySqm * input.gsm) / 1000
+  const requiredYarnKg = totalWeightKgs * 1.05
 
-  return { totalMeters, qtySqm, totalWeightKgs }
+  return { totalMeters, qtySqm, totalWeightKgs, requiredYarnKg }
 }

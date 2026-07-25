@@ -72,11 +72,11 @@ export async function POST(req: NextRequest) {
     // ── 6. Build create-many payload ──────────────────────────────────────────
     const createPayload = lines.map((line, i) => {
       const lm = effectiveLengthM(line)
-      const { qtySqm, totalWeightKgs } = calculateOrderWeight({
-        orderType:  line.orderType,
-        widthM:     line.widthM,
-        lengthM:    lm,
-        gsm:        line.gsm,          // per-line (migrated from shared)
+      const { qtySqm, totalWeightKgs, requiredYarnKg } = calculateOrderWeight({
+        orderType:  line.orderType ?? 'meters',
+        widthM:     line.widthM ?? null,
+        lengthM:    line.lengthM ?? null,
+        gsm:        line.gsm ?? null,
         qty:        line.qty ?? null,
         rollLength: line.rollLength ?? null,
         pieceLength: line.pieceLength ?? null,
@@ -124,6 +124,7 @@ export async function POST(req: NextRequest) {
         // Calculated weight (Case A formula)
         qtySqm,
         totalWeightKgs,
+        requiredYarnKg,
         // dataSource: tracks provenance for AI training data quality
         dataSource: 'manual',
       }

@@ -2,8 +2,8 @@
 > Ground truth for all AI coding agents (Antigravity, Cursor).
 > READ THIS ENTIRE FILE before generating any code.
 > If context in this file conflicts with your judgment → this file wins.
-> Last sprint DONE: Extruder Daily Output (Sprint E1) + Warping Daily Output (Sprint E2) + Knitting Daily Detail (Sprint E3) + Draft Order (Sprint F1) ✅
-> Next sprint pending: mbCode per-line + frPct Decimal + 6 req mới từ KH
+> Last sprint DONE: Extruder Daily Output (Sprint E1) + Warping Daily Output (Sprint E2) + Knitting Daily Detail (Sprint E3) + Draft Order (Sprint F1) + Bulk Import Schedule (Sprint F3) + Form UX, Search, Bulk-edit PI & ColorPreset (Sprint F4) + Order Journey (Sprint G1-G3) ✅
+> Next sprint pending: Customer Management UI & Materials refinement
 
 ---
 
@@ -24,8 +24,8 @@ Replace 4 disconnected Excel files with 1 system.
 Flow: Sales Order → Production Order → Machine Schedule → Material Planning.
 
 **Phase 1 (DONE):** Endusers enter data into tool. Stop using Excel.
-**Last sprint DONE:** Extruder Daily Output (Sprint E1) + Warping Daily Output (Sprint E2) ✅
-**Next sprints (Must have trước G3 24-27/7):** mbCode per-line · frPct Decimal + 6 req mới từ KH.
+**Last sprint DONE:** Order Journey (Sprint G1-G3) ✅
+**Next sprints (Must have trước G3 24-27/7):** Customer Management UI & Materials refinement.
 **Phase 2 (later):** AI automation, auto-scheduling, formula calculations, alerts.
 
 ---
@@ -270,15 +270,53 @@ dataSource   String   @default("manual")
 - **Side nav:** Production(`/orders`), Schedule(`/schedule`), Materials(`/materials`), Reports(disabled), Settings(disabled)
 
 ### Draft Order ✅ (Sprint F1)
-- `isDraft Boolean @default(false)` field on `ProductionOrder` model (with `@@index([isDraft])`).
-- `widthM`, `lengthM`, `gsm`, `color` optional for draft orders (`Float?`, `Int?`, `String?`).
-- `draftMultiLineOrderSchema` in `src/lib/validations/order.ts` (requires `piNumber` + `customer` only).
-- Checkbox "Đây là đơn nháp" in `MultiLineOrderForm.tsx` (`/orders/new-multi`).
-- `POST /api/orders/[id]/approve` endpoint — validates against `multiLineOrderSchema`, recalculates weights, sets `isDraft = false`. Returns 422 with `missingFields: string[]` if incomplete.
-- `DraftBadge` component (`src/components/orders/DraftBadge.tsx`) rendered on `OrderTable`, `OrderDetail`, `POSummaryTable`.
-- `OrderDetail.tsx` — top draft warning banner + **"Duyệt đơn nháp →"** button + missing fields error box + **hides Progress Tracking section completely**.
-- `AssignModal` & `AssignFromOrderModal` — filters out draft orders at query level (`isDraft: false`) and blocks assignment in API POST.
-- Excel Import & Bulk Paste intentionally do NOT support draft creation (fail validation as before if fields missing).
+- **Domain Terminology:**
+  - **Đơn nháp (`isDraft = true`)**: Lưu tạm khi thiếu thông số kỹ thuật, chỉ bắt buộc `piNumber` + `customer`. KHÔNG được gán vào Schedule (M2) cho đến khi Duyệt. Nút "Duyệt đơn nháp" validate lại đầy đủ, set `isDraft = false` nếu đủ field.
+- **APIs mới:**
+  - `POST /api/orders/[id]/approve`: Duyệt đơn nháp (validate `multiLineOrderSchema`, recalculate weights, set `isDraft = false`). Trả về 422 với `missingFields: string[]` nếu thiếu field.
+  - `GET /api/orders/check-pi`: Cảnh báo PI Number trùng khác khách hàng ngay khi nhập.
+- **Schema & Null Safety:**
+  - `isDraft Boolean @default(false)` trên `ProductionOrder` model (với `@@index([isDraft])`).
+  - `widthM`, `lengthM`, `gsm`, `color` giờ là OPTIONAL (`Float?`, `Int?`, `String?`) cho đơn nháp.
+  - ⚠️ Mọi nơi đọc 4 field này PHẢI xử lý null (hiện "—", KHÔNG NaN/undefined) — xem null-safety audit tại `docs/specs/f1-draft-order.md`.
+- **UI & Flow:**
+  - `draftMultiLineOrderSchema` trong `src/lib/validations/order.ts` (chỉ bắt buộc `piNumber` + `customer`).
+  - Checkbox "Đây là đơn nháp" trong `MultiLineOrderForm.tsx` (`/orders/new-multi`).
+  - `DraftBadge` component (`src/components/orders/DraftBadge.tsx`) hiển thị trên `OrderTable`, `OrderDetail`, `POSummaryTable`.
+  - `OrderDetail.tsx` — banner cảnh báo đơn nháp + nút **"Duyệt đơn nháp →"** + box hiển thị field còn thiếu + **ẩn hoàn toàn section Progress Tracking**.
+  - `AssignModal` & `AssignFromOrderModal` — lọc đơn nháp ở query DB (`isDraft: false`) và chặn gán đơn nháp trong API POST.
+  - Excel Import & Bulk Paste **không hỗ trợ tạo nháp** (vẫn báo lỗi validate như cũ nếu thiếu field).
+
+### Form UX, Search, Bulk-edit PI & ColorPreset ✅ (Sprint F4)
+- **Layout MultiLineOrderForm.tsx**:
+  - **Row 1**: Màu (Color) | Khổ (m) | Mét/cuộn (hoặc length field tương ứng orderType) | Kiểu đơn.
+  - **Row 2**: GSM | Số cuộn (hoặc số tấm).
+- **Fix FR%/UV%**:
+  - `uvPct`/`frPct` mặc định rỗng (không phải 0).
+  - Thêm checkbox `Chống cháy (FR)` (`frFlag`): khi chọn → bắt buộc `frPct > 0`.
+- **Button "Tải mẫu Excel"**:
+  - Thêm tại `/orders` (cạnh Import Excel) dẫn tới `GET /api/orders/template`.
+- **Search theo Color + GSM**:
+  - Thêm tìm kiếm theo `Color` (contains) và `GSM` (exact number) tại `OrderTable.tsx`.
+- **Bulk-edit PI Number (`/orders/summary`)**:
+  - Nút **"Sửa chung PO"** trên từng group header mở `BulkEditPOModal.tsx`.
+  - `PATCH /api/orders/bulk-edit-pi` cập nhật đồng bộ các field chung (`customer`, `orderDate`, `deliveryDate`, `containerSize`, `description`, `remark`) trong 1 `$transaction` duy nhất.
+- **ColorPreset theo Khách hàng**:
+  - Model `ColorPreset` trong DB liên kết `Customer`.
+  - Seeded 16 mẫu màu chuẩn cho `INTERWAY GLOBAL CO., LTD`.
+  - Autocomplete gợi ý mẫu màu + tự động điền `mbCode`, `needleCount` (wale), `eyeletLines` khi Planner nhập form `MultiLineOrderForm.tsx`.
+
+### Order Journey — Link data + Loss formula + PO Summary display ✅ (Sprint G1-G3)
+- **Loss formula**:
+  - `requiredYarnKg = totalWeightKgs * 1.05` (5% loss added to finished weight; input yarn > output fabric).
+  - Calculated automatically whenever order weights update.
+- **Schema & FK Relations**:
+  - `orderId String?` added to `ExtruderDailyOutput`, `WarpingDailyOutput`, and `KnittingDailyDetail` with FK to `ProductionOrder(id)`.
+  - Backfilled 66 records (55.0%) unambiguously linked by `orderRef` (matching single sub-line PIs).
+- **PO Summary Journey Bar (`POSummaryTable.tsx`)**:
+  - Shows **Hành trình sản xuất**: Kéo sợi (%) | Cuốn (%) | Dệt (theo dòng).
+  - Differentiates `0% - Chưa sản xuất` vs `⚠️ Có dữ liệu chưa liên kết` badge (with tooltip for ambiguous/unlinked PI references).
+- **API `GET /api/orders/journey-summary`**: Returns Extruder/Warping weights and unlinked data flags per `piNumber`.
 
 ### Packages installed (do NOT reinstall)
 - next@14.2.35, react, react-dom, typescript, tailwindcss
@@ -317,6 +355,8 @@ model ProductionOrder {
 
   // Draft Order (Sprint F1)
   isDraft      Boolean  @default(false)
+
+  // ⚠️ Mọi nơi đọc 4 field này (widthM/lengthM/gsm/color) PHẢI xử lý null (hiện "—", KHÔNG NaN/undefined) — xem null-safety audit tại docs/specs/f1-draft-order.md
 
   // Optional order details
   qty          Int?                  // quantity in rolls or pieces
@@ -410,7 +450,7 @@ model MachineAssignment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([machineId, startDate])
+  @@unique([machineId, startDate, orderId])
   @@map("machine_assignments")
 }
 
@@ -530,6 +570,27 @@ model KnittingDailyDetail {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
+
+### MachineSpec (Sprint F3)
+```prisma
+model MachineSpec {
+  machineId String   @id            // "M-001" to "M-040"
+  widthM    Float                   // khổ máy (m) — từ col A file lịch, dùng cho Sprint D
+  updatedAt DateTime @updatedAt
+  @@map("machine_specs")
+}
+```
+
+### ScheduleImportLog (Sprint F3)
+```prisma
+model ScheduleImportLog {
+  id         String   @id @default(cuid())
+  importedAt DateTime @default(now())
+  backupData Json     // snapshot MachineAssignment bị xóa dạng JSON (audit trail & rollback)
+  summary    Json     // summary count
+  @@map("schedule_import_logs")
+}
+```
 ```
 
 ---
@@ -639,6 +700,7 @@ sny-planner/
 | Sprint E1 — Extruder Daily Output | ✅ Done |
 | Sprint E2 — Warping Daily Output | ✅ Done |
 | Sprint E3 — Knitting Daily Detail | ✅ Done |
+| Sprint F3 — Bulk Import Schedule | ✅ Done |
 
 ## 9. Sprints pending — Must have trước Gate G3 (24–27/7)
 
@@ -674,6 +736,8 @@ Req mới từ Dung/Loan (16/07/2026) — chưa build:
 - **machineNote**: ghi chú vận hành cấp máy/ngày (vd thay dàn, đổi màu) — gắn same-value cho toàn bộ record cùng máy/ngày trong KnittingDailyDetail, không phải ghi chú riêng từng dòng
 - ⚠️ **PENDING**: field `beamCount1`/`beamCount2` trong WarpingDailyOutput là TÊN PLACEHOLDER — chưa xác nhận ý nghĩa nghiệp vụ thật với SNY (Dung/Loan). KHÔNG dùng 2 field này cho bất kỳ tính toán/công thức nào ở Phase 2 cho đến khi có xác nhận và rename.
 - ⚠️ **Rolling module** (sản phẩm cuối, ma trận ngày×máy 1435 dòng, phức tạp nhất) — chưa bắt đầu
+- ⚠️ **Schedule grid UI**: chưa hiển thị được nhiều assignment chồng cùng ngày/máy (chỉ thấy 1/N nhãn) — không mất dữ liệu, chỉ là giới hạn hiển thị, cần sprint UI riêng sau này
+- ⚠️ **8 PI cần Tung tự gán thêm sub-line/kiểm tra tay**: 4 ambiguous gốc (`JPY26-274`, `BH26-4`, `GBN26-121`, `GBN26-122`) — các PI khác đã tự động xử lý xong
 
 ---
 
@@ -716,6 +780,7 @@ Trong Phase C (Verify) của mọi sprint từ giờ về sau:
 ---
 
 ## 12. When to STOP and ask Tung
+0. TUYỆT ĐỐI KHÔNG tự gọi API/route có tính chất XÓA hoặc GHI ĐÈ dữ liệu production (confirm import, bulk delete, migration ảnh hưởng nhiều record...) để 'tự test'. Dừng lại đúng bước Preview/dry-run, báo cáo kết quả preview cho Tung, và CHỜ Tung tự thao tác qua UI thật. Vi phạm rule này 2 lần trong Sprint F3 dù đã được nhắc rõ — từ nay đây là rule cứng ngang hàng với rule không được rm/delete/drop khi chưa hỏi.
 1. Spec is ambiguous
 2. Need new npm package — list URL first
 3. About to modify existing API routes in `src/app/api/orders/`

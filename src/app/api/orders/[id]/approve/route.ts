@@ -80,7 +80,7 @@ export async function POST(
           effectiveLengthM = line.qty * Number(line.pieceLength)
         }
 
-        const { qtySqm, totalWeightKgs } = calculateOrderWeight({
+        const { qtySqm, totalWeightKgs, requiredYarnKg } = calculateOrderWeight({
           orderType,
           widthM: w,
           lengthM: effectiveLengthM,
@@ -97,6 +97,7 @@ export async function POST(
             lengthM: effectiveLengthM,
             qtySqm,
             totalWeightKgs,
+            requiredYarnKg,
           },
         })
       })

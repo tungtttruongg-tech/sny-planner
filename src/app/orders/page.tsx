@@ -55,6 +55,7 @@ export default async function OrdersPage() {
       pieceLength: o.pieceLength != null ? o.pieceLength.toString() : null,
       qtySqm:         o.qtySqm         != null ? o.qtySqm.toString()         : null,
       totalWeightKgs: o.totalWeightKgs != null ? o.totalWeightKgs.toString() : null,
+      requiredYarnKg: o.requiredYarnKg != null ? o.requiredYarnKg.toString() : null,
       deliveryDate: o.deliveryDate != null ? o.deliveryDate.toISOString() : null,
       frPct: o.frPct != null ? o.frPct.toString() : null,
       assignments: o.assignments.map(a => ({
@@ -92,6 +93,15 @@ export default async function OrdersPage() {
 
         {/* Action buttons */}
         <div className="flex items-center gap-md mt-1">
+          <a
+            id="btn-download-template"
+            href="/api/orders/template"
+            download="order_import_template.xlsx"
+            className="inline-flex items-center justify-center gap-sm border border-outline-variant bg-surface-container-lowest hover:bg-surface-container text-on-surface text-sm font-medium px-3 py-2 h-9 rounded-md transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px] text-primary">download</span>
+            Tải mẫu Excel
+          </a>
           <ImportOrdersModal />
           <Link
             id="btn-bulk-paste"

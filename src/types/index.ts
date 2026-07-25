@@ -58,6 +58,7 @@ export interface SerializedProductionOrder {
 
   qtySqm: string | null
   totalWeightKgs: string | null
+  requiredYarnKg: string | null
 
   status: string
   dataSource: string
