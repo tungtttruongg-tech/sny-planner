@@ -735,7 +735,9 @@ Req mới từ Dung/Loan (16/07/2026) — chưa build:
 - **KnittingDailyOutput vs KnittingDailyDetail**: Output = tổng mét/máy/ngày, phục vụ Progress Tracking LIVE trên Order Detail/PO Summary (KHÔNG đổi). Detail = breakdown ca/màu/đơn hàng + thông số vận hành máy, phục vụ Sprint D (thông số dàn máy trên Schedule)
 - **machineNote**: ghi chú vận hành cấp máy/ngày (vd thay dàn, đổi màu) — gắn same-value cho toàn bộ record cùng máy/ngày trong KnittingDailyDetail, không phải ghi chú riêng từng dòng
 - ⚠️ **PENDING**: field `beamCount1`/`beamCount2` trong WarpingDailyOutput là TÊN PLACEHOLDER — chưa xác nhận ý nghĩa nghiệp vụ thật với SNY (Dung/Loan). KHÔNG dùng 2 field này cho bất kỳ tính toán/công thức nào ở Phase 2 cho đến khi có xác nhận và rename.
+- ⚠️ **Tỷ lệ match orderId hiện ~55.0%** (66/120 dòng có ref) — 38.3% unmatched, phần lớn do lỗi gõ PI trong file Excel nguồn (vd `LANDSKOON 26-2` vs DB `LANDSKROON26-2`) hoặc PI chưa tồn tại trong hệ thống. Danh sách 46 dòng unmatched đã gửi Dung rà lại, chưa xử lý.
 - ⚠️ **Rolling module** (sản phẩm cuối, ma trận ngày×máy 1435 dòng, phức tạp nhất) — chưa bắt đầu
+- ⚠️ **Đóng gói (G4)**: module hoàn toàn mới, chưa có code, launch bổ sung sau khi demo Journey 3 khâu
 - ⚠️ **Schedule grid UI**: chưa hiển thị được nhiều assignment chồng cùng ngày/máy (chỉ thấy 1/N nhãn) — không mất dữ liệu, chỉ là giới hạn hiển thị, cần sprint UI riêng sau này
 - ⚠️ **8 PI cần Tung tự gán thêm sub-line/kiểm tra tay**: 4 ambiguous gốc (`JPY26-274`, `BH26-4`, `GBN26-121`, `GBN26-122`) — các PI khác đã tự động xử lý xong
 

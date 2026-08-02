@@ -343,16 +343,14 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           >
             <span className="material-symbols-outlined text-[18px]">edit</span>Edit
           </button>
-          {!currentOrder.isDraft && (
-            <button
-              id="btn-assign-machine"
-              onClick={() => setShowAssignModal(true)}
-              className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
-            >
-              <span className="material-symbols-outlined text-[18px]">precision_manufacturing</span>
-              Assign to machine
-            </button>
-          )}
+          <button
+            id="btn-assign-machine"
+            onClick={() => setShowAssignModal(true)}
+            className="inline-flex items-center justify-center gap-sm border border-primary bg-transparent hover:bg-surface-container text-primary text-sm font-medium px-4 py-2 h-9 rounded-md transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">precision_manufacturing</span>
+            Assign to machine
+          </button>
         </div>
 
         {/* Máy đang chạy */}

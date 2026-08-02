@@ -66,9 +66,12 @@ export async function POST(
       )
     }
 
-    // All validation passed! Recalculate weights and update isDraft = false for all sub-lines of the PI
-    await prisma.$transaction(
-      piSubLines.map((line) => {
+    const subLineIds = piSubLines.map((l) => l.id)
+
+    // All validation passed! Recalculate weights, update isDraft = false for all sub-lines,
+    // AND convert all linked MachineAssignments from isPlaceholder = true -> false
+    await prisma.$transaction([
+      ...piSubLines.map((line) => {
         const orderType = line.orderType ?? 'meters'
         const w = line.widthM!
         const g = line.gsm!
@@ -100,8 +103,12 @@ export async function POST(
             requiredYarnKg,
           },
         })
-      })
-    )
+      }),
+      prisma.machineAssignment.updateMany({
+        where: { orderId: { in: subLineIds } },
+        data: { isPlaceholder: false },
+      }),
+    ])
 
     return NextResponse.json({
       success: true,

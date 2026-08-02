@@ -35,20 +35,13 @@ export default function AssignFromOrderModal({ order, onAssigned, onClose }: Pro
     order.lengthM ? String(Math.round(order.lengthM / 2)) : ''
   )
   const [estimatedDailyOutput, setEstimatedDailyOutput] = useState('')
-  const [error, setError]                 = useState(
-    order.isDraft ? 'Đơn nháp chưa được duyệt. Vui lòng duyệt đơn trước khi gán vào Lịch sản xuất.' : ''
-  )
+  const [error, setError]                 = useState('')
   const [isLoading, setIsLoading]         = useState(false)
   const [isSuccess, setIsSuccess]         = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-
-    if (order.isDraft) {
-      setError('Đơn nháp chưa được duyệt. Vui lòng duyệt đơn trước khi gán vào Lịch sản xuất.')
-      return
-    }
 
     // Client-side date validation
     const parsedStart = new Date(startDate)
@@ -134,6 +127,14 @@ export default function AssignFromOrderModal({ order, onAssigned, onClose }: Pro
             {error && (
               <div className="p-sm rounded-lg bg-[#FFF8E7] border border-[#F59E0B] text-[#92400E] text-label-sm">
                 {error}
+              </div>
+            )}
+
+            {/* Draft Order Notice */}
+            {order.isDraft && (
+              <div className="p-sm rounded-lg bg-warning-container/40 border border-warning/50 text-warning-800 text-label-sm flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-warning-700">push_pin</span>
+                <span>Đơn nháp sẽ được giữ chỗ tạm (viền đứt nét) trên Lịch sản xuất.</span>
               </div>
             )}
 

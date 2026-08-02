@@ -32,7 +32,8 @@ function formatOrderLabel(o: Order): string {
   const widthStr = o.widthM != null ? `${Number(o.widthM).toFixed(1)}m` : '—'
   const colorStr = o.color ?? '—'
   const gsmStr = o.gsm != null ? `${o.gsm}gsm` : '—'
-  const base = `${o.piNumber} · Dòng ${o.subLineIndex + 1} — ${widthStr} · ${colorStr} · ${gsmStr}`
+  const draftPrefix = o.isDraft ? '📌 [Nháp] ' : ''
+  const base = `${draftPrefix}${o.piNumber} · Dòng ${o.subLineIndex + 1} — ${widthStr} · ${colorStr} · ${gsmStr}`
   return o.meshType ? `${base} · ${o.meshType}` : base
 }
 

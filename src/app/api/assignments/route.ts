@@ -47,6 +47,7 @@ export async function GET(request: Request) {
             piNumber: true,
             customer: true,
             status: true,
+            isDraft: true,
             widthM: true,
             lengthM: true,
             gsm: true,
@@ -94,20 +95,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Server-side check: Đơn nháp (isDraft = true) KHÔNG được phép gán vào Lịch sản xuất
+    // Fetch order to check if draft (for isPlaceholder flag)
     const targetOrder = await prisma.productionOrder.findUnique({
       where: { id: orderId },
       select: { isDraft: true, piNumber: true },
     });
 
-    if (targetOrder?.isDraft) {
-      return NextResponse.json(
-        { message: `Đơn nháp [${targetOrder.piNumber}] chưa được duyệt. Vui lòng duyệt đơn trước khi gán vào Lịch sản xuất.` },
-        { status: 422 }
-      );
+    if (!targetOrder) {
+      return NextResponse.json({ message: "Order not found" }, { status: 404 });
     }
 
-    // Kiểm tra chồng lịch theo máy (một máy không thể chạy 2 đơn cùng lúc)
+    // Overlap check (applies equally to draft placeholders and official assignments)
     console.log("OVERLAP CHECK TRIGGERED");
     const existing = await prisma.machineAssignment.findFirst({
       where: {
@@ -124,13 +122,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Insert
+    // Insert with isPlaceholder = true if order is draft
     const assignment = await prisma.machineAssignment.create({
       data: {
         machineId,
         orderId,
         startDate: start,
         endDate: end,
+        isPlaceholder: targetOrder.isDraft,
         ...(allocatedMeters != null && { allocatedMeters }),
         ...(estimatedDailyOutput != null && { estimatedDailyOutput }),
       },

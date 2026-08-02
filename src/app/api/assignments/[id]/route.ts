@@ -35,7 +35,7 @@ export async function PATCH(
     if (!id) return NextResponse.json({ message: "ID is required" }, { status: 400 });
 
     const body = await request.json();
-    const { orderId, endDate, estimatedDailyOutput } = body;
+    const { machineId, orderId, startDate, endDate, estimatedDailyOutput } = body;
 
     const existing = await prisma.machineAssignment.findUnique({
       where: { id },
@@ -45,8 +45,10 @@ export async function PATCH(
       return NextResponse.json({ message: "Assignment not found" }, { status: 404 });
     }
 
-    const start = existing.startDate;
-    const end = new Date(endDate);
+    const targetMachineId = machineId || existing.machineId;
+    const targetOrderId = orderId || existing.orderId;
+    const start = startDate ? new Date(startDate) : existing.startDate;
+    const end = endDate ? new Date(endDate) : existing.endDate;
 
     if (start > end) {
       return NextResponse.json(
@@ -55,10 +57,23 @@ export async function PATCH(
       );
     }
 
-    // Overlap check excluding current assignment
+    // Check target order if orderId changed
+    let isPlaceholder = existing.isPlaceholder;
+    if (orderId && orderId !== existing.orderId) {
+      const targetOrder = await prisma.productionOrder.findUnique({
+        where: { id: orderId },
+        select: { isDraft: true },
+      });
+      if (!targetOrder) {
+        return NextResponse.json({ message: "Order not found" }, { status: 404 });
+      }
+      isPlaceholder = targetOrder.isDraft;
+    }
+
+    // Overlap check on target machine and date range, excluding current assignment
     const overlap = await prisma.machineAssignment.findFirst({
       where: {
-        machineId: existing.machineId,
+        machineId: targetMachineId,
         id: { not: id },
         startDate: { lte: end },
         endDate: { gte: start },
@@ -75,8 +90,11 @@ export async function PATCH(
     const updated = await prisma.machineAssignment.update({
       where: { id },
       data: {
-        orderId,
+        machineId: targetMachineId,
+        orderId: targetOrderId,
+        startDate: start,
         endDate: end,
+        isPlaceholder,
         // Cập nhật sản lượng dự kiến nếu client gửi lên (undefined = giữ nguyên)
         ...(estimatedDailyOutput !== undefined && {
           estimatedDailyOutput: estimatedDailyOutput === null ? null : estimatedDailyOutput,

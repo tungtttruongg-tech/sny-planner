@@ -159,6 +159,9 @@ model MachineAssignment {
   // Sản lượng dự kiến (m/ngày) — planner nhập tay khi assign
   // Dùng cho công thức ngày hoàn thành ở Phase 2 (không tính trong sprint này)
   estimatedDailyOutput Decimal? @db.Decimal(10, 2)
+
+  // true = Giữ chỗ tạm (đơn nháp), false = Lịch chính thức
+  isPlaceholder        Boolean  @default(false)
   
   startDate DateTime
   endDate   DateTime

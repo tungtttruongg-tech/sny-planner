@@ -11,10 +11,12 @@ export type AssignmentDetail = {
   endDate: string
   allocatedMeters: string | null  // Decimal serialised as string by Prisma
   estimatedDailyOutput: string | null  // Decimal serialised as string by Prisma
+  isPlaceholder?: boolean
   order: {
     id: string
     piNumber: string
     customer: string
+    isDraft?: boolean
     widthM: number
     lengthM: number
     gsm: number
@@ -46,6 +48,8 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
   // Edit state
   const [orders, setOrders] = useState<Order[]>([])
   const [selectedOrderId, setSelectedOrderId] = useState('')
+  const [editMachineId, setEditMachineId] = useState('')
+  const [editStartDate, setEditStartDate] = useState('')
   const [editEndDate, setEditEndDate] = useState('')
 
   useEffect(() => {
@@ -53,6 +57,8 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
       setIsEditing(false)
       setError('')
       setSelectedOrderId(assignment.order.id)
+      setEditMachineId(assignment.machineId)
+      setEditStartDate(format(new Date(assignment.startDate), 'yyyy-MM-dd'))
       setEditEndDate(format(new Date(assignment.endDate), 'yyyy-MM-dd'))
     }
   }, [isOpen, assignment])
@@ -79,7 +85,7 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
     setIsLoading(true)
 
     try {
-      const parsedStart = new Date(format(new Date(assignment.startDate), 'yyyy-MM-dd'))
+      const parsedStart = new Date(editStartDate)
       const parsedEnd = new Date(editEndDate)
 
       if (parsedEnd < parsedStart) {
@@ -88,13 +94,16 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
         return
       }
 
+      const startISO = new Date(`${editStartDate}T00:00:00+07:00`).toISOString()
       const endISO = new Date(`${editEndDate}T00:00:00+07:00`).toISOString()
 
       const res = await fetch(`/api/assignments/${assignment.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          machineId: editMachineId,
           orderId: selectedOrderId,
+          startDate: startISO,
           endDate: endISO
         })
       })
@@ -134,6 +143,8 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
 
   if (!isOpen || !assignment) return null
 
+  const MACHINES = Array.from({ length: 40 }, (_, i) => `M-${String(i + 1).padStart(3, '0')}`)
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
@@ -163,7 +174,16 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
             <div className="space-y-md">
               <div>
                 <label className="block text-label-sm font-medium text-secondary mb-xs">Machine</label>
-                <input type="text" disabled value={assignment.machineId} className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline-variant bg-surface-container-lowest text-on-surface-variant font-mono text-type-mono" />
+                <select
+                  required
+                  value={editMachineId}
+                  onChange={e => setEditMachineId(e.target.value)}
+                  className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none text-body-md font-mono text-type-mono"
+                >
+                  {MACHINES.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -184,14 +204,20 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
               <div className="flex gap-sm">
                 <div className="flex-1">
                   <label className="block text-label-sm font-medium text-secondary mb-xs">Start Date</label>
-                  <input type="text" disabled value={format(new Date(assignment.startDate), 'dd/MM/yyyy')} className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline-variant bg-surface-container-lowest text-on-surface-variant" />
+                  <input 
+                    type="date" 
+                    required
+                    value={editStartDate}
+                    onChange={e => setEditStartDate(e.target.value)}
+                    className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary outline-none" 
+                  />
                 </div>
                 <div className="flex-1">
                   <label className="block text-label-sm font-medium text-secondary mb-xs">End Date</label>
                   <input 
                     type="date" 
                     required
-                    min={format(new Date(assignment.startDate), 'yyyy-MM-dd')}
+                    min={editStartDate}
                     value={editEndDate}
                     onChange={e => setEditEndDate(e.target.value)}
                     className="w-full h-10 px-sm rounded-lg border-[0.5px] border-outline bg-surface focus:border-primary outline-none" 
@@ -219,8 +245,16 @@ export default function DetailModal({ isOpen, onClose, assignment, onSuccess }: 
 
             <div>
               <p className="text-label-sm font-medium text-secondary mb-1">Order</p>
-              <p className="text-body-lg font-semibold text-on-surface">{assignment.order.piNumber}</p>
-              <p className="text-body-sm text-on-surface-variant">{assignment.order.customer}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-body-lg font-semibold text-on-surface">{assignment.order.piNumber}</p>
+                {(assignment.isPlaceholder || assignment.order?.isDraft) && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-warning-container/80 text-warning-900 border border-warning/50">
+                    <span className="material-symbols-outlined text-[14px] text-warning-700">push_pin</span>
+                    Đơn nháp (Giữ chỗ tạm)
+                  </span>
+                )}
+              </div>
+              <p className="text-body-sm text-on-surface-variant mt-0.5">{assignment.order.customer}</p>
             </div>
 
             <div>

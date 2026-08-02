@@ -5,6 +5,7 @@ import { isSameDay, startOfDay } from 'date-fns'
 import AssignModal from '@/components/schedule/AssignModal'
 import DetailModal, { AssignmentDetail } from '@/components/schedule/DetailModal'
 import ImportScheduleModal from '@/components/schedule/ImportScheduleModal'
+import { getPiColorStyle } from '@/lib/colors'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -179,21 +180,33 @@ export default function SchedulePage() {
                     const isStart = isSameDay(startOfDay(new Date(assignment.startDate)), date)
                     const isEnd = isSameDay(startOfDay(new Date(assignment.endDate)), date)
                     const showLabel = isStart || day === 1
-                    
+                    const isPlaceholder = assignment.isPlaceholder || assignment.order?.isDraft
+                    const colorStyle = getPiColorStyle(assignment.order?.piNumber)
+
                     return (
                       <td key={day} className={`border-r-[0.5px] border-outline-variant/40 p-0 last:border-r-0 ${weekend ? 'bg-surface-container/60' : ''}`}>
                         <div 
                           onClick={() => handleCellClick(machine, date)}
-                          title={assignment.order.piNumber}
-                          className={`h-7 mx-0.5 my-0.5 flex items-center cursor-pointer transition-opacity hover:opacity-80
+                          title={`${assignment.order.piNumber}${isPlaceholder ? ' [Giữ chỗ tạm - Đơn nháp]' : ''}`}
+                          style={{
+                            backgroundColor: colorStyle.bgHex,
+                            color: colorStyle.textHex,
+                            borderColor: isPlaceholder ? undefined : colorStyle.borderHex,
+                          }}
+                          className={`h-7 mx-0.5 my-0.5 flex items-center cursor-pointer transition-opacity hover:opacity-85 ${colorStyle.bgClass} ${colorStyle.textClass}
                             ${isStart ? 'rounded-l-md ml-1' : ''}
                             ${isEnd ? 'rounded-r-md mr-1' : ''}
-                            bg-primary text-on-primary
+                            ${isPlaceholder 
+                              ? 'border-2 border-dashed border-amber-600 font-semibold' 
+                              : `border-y border-r ${colorStyle.borderClass} font-medium`
+                            }
                           `}
                         >
                           {showLabel ? (
-                            <span className="text-[10px] font-medium px-1.5 truncate leading-none pt-0.5">
-                              {assignment.order.piNumber}
+                            <span className="text-[10px] px-1.5 truncate leading-none pt-0.5 flex items-center gap-0.5">
+                              {isPlaceholder && <span className="material-symbols-outlined text-[11px] leading-none shrink-0" style={{ color: colorStyle.textHex }}>push_pin</span>}
+                              <span>{assignment.order.piNumber}</span>
+                              {isPlaceholder && <span className="text-[9px] font-bold px-1 py-0.2 rounded border border-amber-500/60 bg-amber-200/90 text-amber-950 shrink-0">Nháp</span>}
                             </span>
                           ) : null}
                         </div>
