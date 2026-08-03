@@ -2,7 +2,7 @@
 > Ground truth for all AI coding agents (Antigravity, Cursor).
 > READ THIS ENTIRE FILE before generating any code.
 > If context in this file conflicts with your judgment → this file wins.
-> Last sprint DONE: Extruder Daily Output (Sprint E1) + Warping Daily Output (Sprint E2) + Knitting Daily Detail (Sprint E3) + Draft Order (Sprint F1) + Bulk Import Schedule (Sprint F3) + Form UX, Search, Bulk-edit PI & ColorPreset (Sprint F4) + Order Journey (Sprint G1-G3) ✅
+> Last sprint DONE: Draft Schedule Placeholder (Sprint H2) + Edit Assignment & PI Color Coding (Sprint H3) ✅
 > Next sprint pending: Customer Management UI & Materials refinement
 
 ---
@@ -318,6 +318,18 @@ dataSource   String   @default("manual")
   - Differentiates `0% - Chưa sản xuất` vs `⚠️ Có dữ liệu chưa liên kết` badge (with tooltip for ambiguous/unlinked PI references).
 - **API `GET /api/orders/journey-summary`**: Returns Extruder/Warping weights and unlinked data flags per `piNumber`.
 
+### Draft Schedule Placeholder ✅ (Sprint H2)
+- **Placeholder Rule**: `MachineAssignment.isPlaceholder Boolean @default(false)`. Đơn nháp được phép gán máy dệt dạng "Giữ chỗ tạm", chiếm slot lịch sản xuất và áp dụng đầy đủ Overlap Check (HTTP 409).
+- **Tự động chuyển đổi**: Khi duyệt đơn nháp (`POST /api/orders/[id]/approve`), tất cả assignments thuộc đơn nháp đó tự động chuyển `isPlaceholder = false` trong cùng 1 `$transaction`. Backfill 1 lần cho 146 record F3 cũ.
+- **APIs & Modals**: `AssignModal` và `AssignFromOrderModal` cho phép chọn đơn nháp (gắn nhãn `📌 [Nháp]`).
+- **OrderDetail**: Nút **"Assign to machine"** hiển thị công khai cho mọi đơn (cả đơn nháp lẫn chính thức).
+
+### Edit Assignment & PI Color Coding ✅ (Sprint H3)
+- **Sửa Lịch Trực Tiếp (`PATCH /api/assignments/[id]`)**: Cho phép sửa trực tiếp `machineId`, `startDate`, `endDate`, `orderId` trong `DetailModal.tsx`. Overlap check (409) tự động loại trừ chính record đang sửa (`id: { not: id }`).
+- **Tô màu theo PI Number (`src/lib/colors.ts`)**: Tính toán màu sắc cố định (deterministic color palette 16 màu) dựa trên mã `piNumber`. Tất cả các ô lịch thuộc cùng 1 PI Number tự động có màu nền & chữ phân biệt, đồng bộ cho cả bản ghi cũ lẫn mới.
+- ⚠️ **Kinh nghiệm xương máu UX & Build (CRITICAL RULE)**: KHÔNG dùng class Tailwind động (vd `bg-${color}`) vì Tailwind sẽ purge mất class khi `next build`. **BẮT BUỘC DÙNG INLINE STYLE** (`style={{ backgroundColor: colorStyle.bgHex, color: colorStyle.textHex }}`) để đảm bảo màu nền hiển thị 100% không bị purge hay ghi đè.
+- **Đơn nháp giữ chỗ (2 tầng Style độc lập)**: Màu nền PI (tầng 1) + Viền đứt nét `border-2 border-dashed border-amber-600` + Badge `📌 Nháp` (tầng 2) hiển thị kết hợp không đè nhau.
+
 ### Packages installed (do NOT reinstall)
 - next@14.2.35, react, react-dom, typescript, tailwindcss
 - prisma@5.22.0, @prisma/client@5.22.0
@@ -443,6 +455,9 @@ model MachineAssignment {
   // Sản lượng dự kiến (m/ngày) — planner nhập tay khi assign
   // Dùng cho công thức ngày hoàn thành ở Phase 2 (không tính trong sprint này)
   estimatedDailyOutput Decimal? @db.Decimal(10, 2)
+
+  // Đơn nháp gán máy = giữ chỗ tạm (viền đứt nét trên UI), tự động chuyển false khi đơn được Duyệt
+  isPlaceholder Boolean  @default(false)
 
   startDate DateTime
   endDate   DateTime
@@ -701,6 +716,8 @@ sny-planner/
 | Sprint E2 — Warping Daily Output | ✅ Done |
 | Sprint E3 — Knitting Daily Detail | ✅ Done |
 | Sprint F3 — Bulk Import Schedule | ✅ Done |
+| Sprint H2 — Giữ chỗ sản xuất cho Đơn nháp (Placeholder Assignment) | ✅ Done |
+| Sprint H3 — Sửa lịch trực tiếp + Tô màu theo PI trên Schedule | ✅ Done |
 
 ## 9. Sprints pending — Must have trước Gate G3 (24–27/7)
 
@@ -735,11 +752,12 @@ Req mới từ Dung/Loan (16/07/2026) — chưa build:
 - **KnittingDailyOutput vs KnittingDailyDetail**: Output = tổng mét/máy/ngày, phục vụ Progress Tracking LIVE trên Order Detail/PO Summary (KHÔNG đổi). Detail = breakdown ca/màu/đơn hàng + thông số vận hành máy, phục vụ Sprint D (thông số dàn máy trên Schedule)
 - **machineNote**: ghi chú vận hành cấp máy/ngày (vd thay dàn, đổi màu) — gắn same-value cho toàn bộ record cùng máy/ngày trong KnittingDailyDetail, không phải ghi chú riêng từng dòng
 - ⚠️ **PENDING**: field `beamCount1`/`beamCount2` trong WarpingDailyOutput là TÊN PLACEHOLDER — chưa xác nhận ý nghĩa nghiệp vụ thật với SNY (Dung/Loan). KHÔNG dùng 2 field này cho bất kỳ tính toán/công thức nào ở Phase 2 cho đến khi có xác nhận và rename.
-- ⚠️ **Tỷ lệ match orderId hiện ~55.0%** (66/120 dòng có ref) — 38.3% unmatched, phần lớn do lỗi gõ PI trong file Excel nguồn (vd `LANDSKOON 26-2` vs DB `LANDSKROON26-2`) hoặc PI chưa tồn tại trong hệ thống. Danh sách 46 dòng unmatched đã gửi Dung rà lại, chưa xử lý.
-- ⚠️ **Rolling module** (sản phẩm cuối, ma trận ngày×máy 1435 dòng, phức tạp nhất) — chưa bắt đầu
-- ⚠️ **Đóng gói (G4)**: module hoàn toàn mới, chưa có code, launch bổ sung sau khi demo Journey 3 khâu
-- ⚠️ **Schedule grid UI**: chưa hiển thị được nhiều assignment chồng cùng ngày/máy (chỉ thấy 1/N nhãn) — không mất dữ liệu, chỉ là giới hạn hiển thị, cần sprint UI riêng sau này
-- ⚠️ **8 PI cần Tung tự gán thêm sub-line/kiểm tra tay**: 4 ambiguous gốc (`JPY26-274`, `BH26-4`, `GBN26-121`, `GBN26-122`) — các PI khác đã tự động xử lý xong
+- ⚠️ **6 record ambiguous cần gán tay**: `JPY26-274` ×4 (màu SWHITE/SHOW WHITE lệch tên, cần chọn đúng sub-line khổ 2.6m/3.1m), `IWN26-161` ×2 (màu "D. SANDT TAPE" — cần Dung xác nhận màu thật là gì trước). *Lưu ý: 2 record Knitting `IWN 26-161` (BEIGE, 3.0m, 300gsm) đã tự động gán vào SubLine 0.*
+- ⚠️ **File Excel review unmatched (18 dòng unique / 46 records tổng cộng)**: Đã xuất gửi Dung rà PI lệch — CHƯA có phản hồi.
+- ⚠️ **Rolling Module (Sprint H1)**: Đã audit 100%, phát hiện 81.0% unmatched/ambiguous do PI viết tắt ở file nguồn Excel nhà máy. BẬT CHẾ ĐỘ CHỜ (ON HOLD) cho Phase 1, KHÔNG build per-PI Journey lúc này. Đề xuất: (a) yêu cầu xưởng ghi đủ PI khi nhập liệu, hoặc (b) làm bản rút gọn "Rolling Daily Total" không phân tách PI nếu cần khẩn cấp.
+- ⚠️ **Đóng gói (Packing - G4)**: CHƯA xác nhận với Dung theo dõi theo từng PI hay theo tổng ngày cả nhà máy (như sheet mẫu "SẢN LƯỢNG ĐÓNG GÓI" đã xem — hiện đang ở dạng tổng ngày, không theo đơn).
+- ⚠️ **Regression Knitting Progress Tracking**: Khách từng báo ("trước dc rồi giờ chưa chạy dc") — CHƯA XÁC MINH, cần kiểm tra PI `CVellis26-2` + hỏi khách đơn cụ thể.
+- ⚠️ **Schedule grid UI**: chưa hiển thị được nhiều assignment chồng cùng ngày/máy (chỉ thấy 1/N nhãn) — không mất dữ liệu, chỉ là giới hạn hiển thị, cần sprint UI riêng sau này.
 
 ---
 

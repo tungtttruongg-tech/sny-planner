@@ -117,13 +117,17 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
     setIsLoading(true)
 
     try {
-      const parsedStart = new Date(format(startDate, 'yyyy-MM-dd'))
-      const parsedEnd   = new Date(endDate)
+      const startDateStr = format(startDate, 'yyyy-MM-dd')
+      const parsedStart  = new Date(startDateStr)
+      const parsedEnd    = new Date(endDate)
       if (parsedEnd < parsedStart) {
         setError('Ngày kết thúc không được trước ngày bắt đầu')
         setIsLoading(false)
         return
       }
+
+      const startISO = new Date(`${startDateStr}T00:00:00+07:00`).toISOString()
+      const endISO   = new Date(`${endDate}T00:00:00+07:00`).toISOString()
 
       const res = await fetch('/api/assignments', {
         method: 'POST',
@@ -131,16 +135,20 @@ export default function AssignModal({ isOpen, onClose, machineId, startDate, onS
         body: JSON.stringify({
           machineId,
           orderId:   selectedOrderId,
-          startDate: format(startDate, 'yyyy-MM-dd'),
-          endDate,
+          startDate: startISO,
+          endDate:   endISO,
           ...(allocatedMeters      !== '' && { allocatedMeters:      Number(allocatedMeters) }),
           ...(estimatedDailyOutput !== '' && { estimatedDailyOutput: Number(estimatedDailyOutput) }),
         }),
       })
 
       const data = await res.json()
+      if (res.status === 409) {
+        setError(data.message || 'Máy đã được xếp lịch trong khoảng thời gian này')
+        return
+      }
       if (!res.ok) {
-        throw new Error(data.error || data.message || 'Lỗi không xác định')
+        throw new Error(data.message || data.error || 'Lỗi không xác định')
       }
       onSuccess()
       onClose()
