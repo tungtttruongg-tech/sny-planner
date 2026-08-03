@@ -212,6 +212,7 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
       piNumber: currentOrder.piNumber, subLineIndex: currentOrder.subLineIndex,
       customer: currentOrder.customer, orderDate: toDateInputValue(currentOrder.orderDate),
       widthM: currentOrder.widthM ?? undefined, lengthM: currentOrder.lengthM ?? undefined, gsm: currentOrder.gsm ?? undefined,
+      productionGsm: currentOrder.productionGsm ?? undefined,
       color: currentOrder.color ?? undefined, qty: currentOrder.qty ?? undefined,
       mbCode: currentOrder.mbCode ?? undefined,
       uvPct: currentOrder.uvPct != null ? parseFloat(currentOrder.uvPct) : null,
@@ -462,11 +463,20 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
           )}
           <ViewField label="Width (m)"    value={currentOrder.widthM != null ? Number(currentOrder.widthM).toFixed(1) : null} mono />
           <ViewField label="Length (m)"   value={currentOrder.lengthM != null ? Number(currentOrder.lengthM).toLocaleString() : null} mono />
-          <ViewField label="GSM"          value={currentOrder.gsm ?? null}                      mono />
+          <ViewField label="GSM (đơn hàng)" value={currentOrder.gsm ?? null} mono />
+          <ViewField
+            label="GSM sản xuất thực tế"
+            value={
+              currentOrder.productionGsm != null
+                ? `${currentOrder.productionGsm} gsm`
+                : '— (giống GSM đơn)'
+            }
+            mono
+          />
           <ViewField label="Color"        value={currentOrder.color ?? null}                    />
           {currentOrder.totalWeightKgs != null && (
             <ViewField
-              label="Trọng lượng (kg)"
+              label="Trọng lượng PO (kg)"
               value={parseFloat(currentOrder.totalWeightKgs).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}
               mono
             />
@@ -475,7 +485,9 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
             label="Nhu cầu sợi (kg)"
             value={
               !currentOrder.isDraft && currentOrder.requiredYarnKg != null
-                ? parseFloat(currentOrder.requiredYarnKg).toLocaleString('vi-VN', { maximumFractionDigits: 1 })
+                ? `${parseFloat(currentOrder.requiredYarnKg).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}${
+                    currentOrder.productionGsm != null ? ` (theo ${currentOrder.productionGsm}gsm)` : ''
+                  }`
                 : null
             }
             mono
@@ -753,8 +765,11 @@ export default function OrderDetail({ order: initialOrder }: OrderDetailProps) {
               </div>
             </FormField>
           )}
-          <FormField label="GSM"         required error={errors.gsm?.message}>
+          <FormField label="GSM (đơn hàng)" required error={errors.gsm?.message}>
             <input id="edit-gsm" type="number" min={1} max={500} step={1} className={inputCls(true, !!errors.gsm)} {...register('gsm', { valueAsNumber: true })} />
+          </FormField>
+          <FormField label="GSM sản xuất (thực tế)" error={errors.productionGsm?.message} hint="Để trống nếu = GSM đơn">
+            <input id="edit-productionGsm" type="number" min={1} max={500} step={1} className={inputCls(true, !!errors.productionGsm)} {...register('productionGsm', { setValueAs: (v: string | number) => (v === '' || isNaN(Number(v)) ? null : Number(v)) })} />
           </FormField>
           <FormField label="Color"       required error={errors.color?.message}>
             <input id="edit-color" type="text" className={inputCls(false, !!errors.color)} {...register('color')} />

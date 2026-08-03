@@ -191,6 +191,14 @@ export const updateOrderSchema = z.object({
     .max(500, 'GSM must be 500 or less')
     .optional(),
 
+  productionGsm: z
+    .number()
+    .int('GSM sản xuất must be a whole number')
+    .gt(0, 'GSM sản xuất must be greater than 0')
+    .max(500, 'GSM sản xuất must be 500 or less')
+    .nullable()
+    .optional(),
+
   color: z
     .string()
     .min(1, 'Color is required')
@@ -290,6 +298,7 @@ const lineSchema = z
     color:       z.string().min(1, 'Màu là bắt buộc').max(50).transform((v) => v.trim().toUpperCase()),
     widthM:      z.number().gt(0, 'Khổ phải lớn hơn 0').max(20),
     gsm:         z.number().int().gt(0, 'GSM phải lớn hơn 0').max(500),
+    productionGsm: z.number().int().gt(0, 'GSM sản xuất phải lớn hơn 0').max(500).nullable().optional(),
     orderType:   z.enum(['meters', 'rolls', 'pieces']).default('rolls'),
     lengthM:     z.number().gt(0).max(100_000).nullable().optional(),
     qty:         z.number().int().gt(0).nullable().optional(),
@@ -347,6 +356,7 @@ const draftLineSchema = z.object({
   color:       z.string().max(50).transform((v) => v.trim().toUpperCase()).nullable().optional(),
   widthM:      z.number().gt(0).max(20).nullable().optional(),
   gsm:         z.number().int().gt(0).max(500).nullable().optional(),
+  productionGsm: z.number().int().gt(0).max(500).nullable().optional(),
   orderType:   z.enum(['meters', 'rolls', 'pieces']).default('rolls'),
   lengthM:     z.number().gt(0).max(100_000).nullable().optional(),
   qty:         z.number().int().gt(0).nullable().optional(),

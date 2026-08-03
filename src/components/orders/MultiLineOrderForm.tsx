@@ -24,6 +24,7 @@ interface LineItem {
   color: string
   widthM: string
   gsm: string         // per-line (was shared)
+  productionGsm: string // GSM sản xuất thực tế (Sprint I2)
   orderType: OrderType
   lengthM: string
   qty: string
@@ -83,6 +84,7 @@ function calcLine(line: LineItem) {
   const g = parseInt(line.gsm)
   if (!w || !g || isNaN(w) || isNaN(g)) return null
 
+  const prodGsm     = line.productionGsm ? parseInt(line.productionGsm) : null
   const qty         = line.qty         ? parseInt(line.qty)           : null
   const rollLength  = line.rollLength  ? parseFloat(line.rollLength)  : null
   const pieceLength = line.pieceLength ? parseFloat(line.pieceLength) : null
@@ -93,6 +95,7 @@ function calcLine(line: LineItem) {
     widthM: w,
     lengthM,
     gsm: g,
+    productionGsm: prodGsm,
     qty,
     rollLength,
     pieceLength,
@@ -111,6 +114,7 @@ function newLine(): LineItem {
     color: '',
     widthM: '',
     gsm: '',
+    productionGsm: '',
     orderType: 'rolls',
     lengthM: '',
     qty: '',
@@ -374,6 +378,7 @@ export default function MultiLineOrderForm() {
         color:     line.color.trim() || undefined,
         widthM:    line.widthM ? parseFloat(line.widthM) : undefined,
         gsm:       line.gsm ? parseInt(line.gsm) : undefined,
+        productionGsm: line.productionGsm ? parseInt(line.productionGsm) : undefined,
         orderType: line.orderType,
         ...(line.orderType === 'meters' && line.lengthM && {
           lengthM: parseFloat(line.lengthM),
@@ -767,7 +772,7 @@ export default function MultiLineOrderForm() {
 
                 {/* ROW 2: GSM */}
                 <div>
-                  <Label required>GSM</Label>
+                  <Label required>GSM (đơn hàng)</Label>
                   <input
                     id={`ml-line-${line.id}-gsm`}
                     type="number" min={1} max={500} step={1}
@@ -778,6 +783,22 @@ export default function MultiLineOrderForm() {
                   />
                   {fieldErrors[`${p}.gsm`] && (
                     <p className="text-xs text-error mt-1">{fieldErrors[`${p}.gsm`]}</p>
+                  )}
+                </div>
+
+                {/* ROW 2: GSM sản xuất thực tế */}
+                <div>
+                  <Label>GSM sản xuất (thực tế)</Label>
+                  <input
+                    id={`ml-line-${line.id}-productionGsm`}
+                    type="number" min={1} max={500} step={1}
+                    placeholder="Để trống nếu = GSM đơn"
+                    value={line.productionGsm}
+                    onChange={(e) => updateLine(line.id, { productionGsm: e.target.value })}
+                    className={monoInputCls(!!fieldErrors[`${p}.productionGsm`])}
+                  />
+                  {fieldErrors[`${p}.productionGsm`] && (
+                    <p className="text-xs text-error mt-1">{fieldErrors[`${p}.productionGsm`]}</p>
                   )}
                 </div>
 
@@ -1024,9 +1045,17 @@ export default function MultiLineOrderForm() {
                   )}
                   {calc.totalWeightKgs != null && (
                     <span className="text-xs font-inter text-secondary">
-                      Trọng lượng ước tính:{' '}
+                      Trọng lượng PO (dự kiến):{' '}
                       <span className="font-mono text-on-surface font-semibold">
                         {calc.totalWeightKgs.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} kg
+                      </span>
+                    </span>
+                  )}
+                  {calc.requiredYarnKg != null && (
+                    <span className="text-xs font-inter text-secondary">
+                      Nhu cầu sợi ({line.productionGsm ? `${line.productionGsm}gsm` : 'tính theo GSM PO'}):{' '}
+                      <span className="font-mono text-primary font-semibold">
+                        {calc.requiredYarnKg.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} kg
                       </span>
                     </span>
                   )}

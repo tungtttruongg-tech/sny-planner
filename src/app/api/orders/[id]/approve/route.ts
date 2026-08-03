@@ -88,6 +88,7 @@ export async function POST(
           widthM: w,
           lengthM: effectiveLengthM,
           gsm: g,
+          productionGsm: line.productionGsm ?? null,
           qty: line.qty ?? null,
           rollLength: line.rollLength ? Number(line.rollLength) : null,
           pieceLength: line.pieceLength ? Number(line.pieceLength) : null,

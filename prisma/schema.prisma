@@ -27,10 +27,11 @@ model ProductionOrder {
   orderDate    DateTime
 
   // Fabric specs (optional for draft orders, required for approved orders)
-  widthM       Float?   // roll width in metres (e.g. 4.0)
-  lengthM      Float?   // order length in metres
-  gsm          Int?     // grams per square metre (e.g. 165)
-  color        String?  // e.g. "BLACK", "WHITE"
+  widthM        Float?   // roll width in metres (e.g. 4.0)
+  lengthM       Float?   // order length in metres
+  gsm           Int?     // grams per square metre (e.g. 165)
+  productionGsm Int?     // GSM sản xuất thực tế (Sprint I2) — optional, dùng tính requiredYarnKg
+  color         String?  // e.g. "BLACK", "WHITE"
   mbCode       String?  // Mã Masterbatch màu — e.g. "MYD4501A", "7079", "LS309315"
 
   // Draft Order (Sprint F1) — true cho đơn lưu tạm thiếu thông tin

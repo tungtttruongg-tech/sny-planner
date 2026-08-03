@@ -90,6 +90,7 @@ export async function PATCH(
   if (data.widthM !== undefined)       updateData.widthM = data.widthM
   if (data.lengthM !== undefined)      updateData.lengthM = data.lengthM
   if (data.gsm !== undefined)          updateData.gsm = data.gsm
+  if ('productionGsm' in data)         updateData.productionGsm = data.productionGsm
   if (data.color !== undefined)        updateData.color = data.color
   // Optional nullable fields — undefined = not sent (skip), null = clear value
   if ('qty' in data)         updateData.qty = data.qty
@@ -124,24 +125,25 @@ export async function PATCH(
   if ('eyeletSpec' in data)   updateData.eyeletSpec   = data.eyeletSpec
 
   // 4. Recalculate weight if any relevant field changed
-  const weightFields = ['widthM', 'lengthM', 'gsm', 'qty', 'rollLength', 'pieceLength', 'orderType']
+  const weightFields = ['widthM', 'lengthM', 'gsm', 'productionGsm', 'qty', 'rollLength', 'pieceLength', 'orderType']
   const weightFieldChanged = weightFields.some(f => f in updateData || f in data)
 
   if (weightFieldChanged) {
     // Fetch current values so we can fill in whichever fields weren't sent in this patch
     const current = await prisma.productionOrder.findUnique({
       where: { id },
-      select: { widthM: true, lengthM: true, gsm: true, qty: true, rollLength: true, pieceLength: true, orderType: true },
+      select: { widthM: true, lengthM: true, gsm: true, productionGsm: true, qty: true, rollLength: true, pieceLength: true, orderType: true },
     })
     if (current) {
       const { qtySqm, totalWeightKgs, requiredYarnKg } = calculateOrderWeight({
-        orderType:   (updateData.orderType   ?? current.orderType)   as string,
-        widthM:      (updateData.widthM      ?? current.widthM)      as number,
-        lengthM:     (updateData.lengthM     ?? current.lengthM)     as number,
-        gsm:         (updateData.gsm         ?? current.gsm)         as number,
-        qty:         (updateData.qty         ?? current.qty)         as number | null,
-        rollLength:  (updateData.rollLength  ?? current.rollLength  != null ? Number(current.rollLength)  : null) as number | null,
-        pieceLength: (updateData.pieceLength ?? current.pieceLength != null ? Number(current.pieceLength) : null) as number | null,
+        orderType:     (updateData.orderType   ?? current.orderType)   as string,
+        widthM:        (updateData.widthM      ?? current.widthM)      as number,
+        lengthM:       (updateData.lengthM     ?? current.lengthM)     as number,
+        gsm:           (updateData.gsm         ?? current.gsm)         as number,
+        productionGsm: (updateData.productionGsm !== undefined ? updateData.productionGsm : current.productionGsm) as number | null,
+        qty:           (updateData.qty         ?? current.qty)         as number | null,
+        rollLength:    (updateData.rollLength  ?? current.rollLength  != null ? Number(current.rollLength)  : null) as number | null,
+        pieceLength:   (updateData.pieceLength ?? current.pieceLength != null ? Number(current.pieceLength) : null) as number | null,
       })
       updateData.qtySqm         = qtySqm
       updateData.totalWeightKgs = totalWeightKgs

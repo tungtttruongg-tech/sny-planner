@@ -2,7 +2,7 @@
 > Ground truth for all AI coding agents (Antigravity, Cursor).
 > READ THIS ENTIRE FILE before generating any code.
 > If context in this file conflicts with your judgment → this file wins.
-> Last sprint DONE: Draft Schedule Placeholder (Sprint H2) + Edit Assignment & PI Color Coding (Sprint H3) ✅
+> Last sprint DONE: Production GSM (Sprint I2) ✅
 > Next sprint pending: Customer Management UI & Materials refinement
 
 ---
@@ -118,14 +118,17 @@ Flow: Sales Order → Production Order → Machine Schedule → Material Plannin
 - `src/app/api/materials/import-transactions/confirm/route.ts` — creates `MaterialTransaction` records, sets `currentStock = lastStock` (file is source of truth), auto-creates unmatched materials with `minThreshold = null`.
 
 ### Calculated weight fields ✅
-- `qtySqm`, `totalWeightKgs` — auto-calculated on every create/update using `src/lib/calculations/orderWeight.ts`
-- **Formula (Case A):** `qtySqm = widthM × totalMeters`, `totalWeightKgs = qtySqm × gsm / 1000`
+- `qtySqm`, `totalWeightKgs`, `requiredYarnKg` — auto-calculated on every create/update using `src/lib/calculations/orderWeight.ts`
+- **Formula (Case A & Sprint I2):**
+  - `qtySqm = widthM × totalMeters`
+  - `totalWeightKgs = qtySqm × gsm / 1000` (Trọng lượng hiển thị PO cho khách — KHÔNG ĐỔI)
+  - `requiredYarnKg = (qtySqm × (productionGsm ?? gsm) / 1000) × 1.05` (Nhu cầu sợi nội bộ — dùng `productionGsm` nếu có, fallback `gsm` gốc)
 - `totalMeters` depends on `orderType`:
   - `"meters"` → `totalMeters = lengthM`
   - `"rolls"`  → `totalMeters = qty × rollLength`
   - `"pieces"` → `totalMeters = qty × pieceLength`
 - Displayed **live** in: `MultiLineOrderForm` (per row), `OrderDetail` view + edit mode, Schedule `DetailModal`
-- Set on: `POST /api/orders/multi-line`, `POST /api/orders` (legacy), `PATCH /api/orders/[id]`
+- Set on: `POST /api/orders/multi-line`, `POST /api/orders` (legacy), `PATCH /api/orders/[id]`, `POST /api/orders/[id]/approve`
 - **Backfill:** `scripts/backfill-qtysqm.ts` — đã chạy 1 lần (30/06/2026), cập nhật qtySqm + totalWeightKgs cho 113 đơn lịch sử nhập trước khi tính năng tồn tại. Giữ lại trong repo làm audit trail. **KHÔNG chạy lại** trừ khi phát hiện thêm đơn thiếu qtySqm tương tự.
 
 ### PO Summary + Output Input ✅
@@ -330,6 +333,15 @@ dataSource   String   @default("manual")
 - ⚠️ **Kinh nghiệm xương máu UX & Build (CRITICAL RULE)**: KHÔNG dùng class Tailwind động (vd `bg-${color}`) vì Tailwind sẽ purge mất class khi `next build`. **BẮT BUỘC DÙNG INLINE STYLE** (`style={{ backgroundColor: colorStyle.bgHex, color: colorStyle.textHex }}`) để đảm bảo màu nền hiển thị 100% không bị purge hay ghi đè.
 - **Đơn nháp giữ chỗ (2 tầng Style độc lập)**: Màu nền PI (tầng 1) + Viền đứt nét `border-2 border-dashed border-amber-600` + Badge `📌 Nháp` (tầng 2) hiển thị kết hợp không đè nhau.
 
+### GSM Sản Xuất Thực Tế ✅ (Sprint I2)
+- **Thuộc tính mới**: `ProductionOrder.productionGsm Int?` (nullable, optional) — dùng cho các dòng sản phẩm dệt (đặc biệt Shade Net M+T) cần chạy GSM thực tế cao hơn GSM thương mại trên hợp đồng/PI.
+- **Tách biệt 2 con số**:
+  - `totalWeightKgs` (Trọng lượng hiển thị PO cho khách) = `(qtySqm × gsm) / 1000` (KHÔNG ĐỔI).
+  - `requiredYarnKg` (Nhu cầu sợi nội bộ) = `(qtySqm × (productionGsm ?? gsm) / 1000) × 1.05` (tự động dùng `productionGsm` khi có giá trị, fallback `gsm` gốc cho 119+ đơn cũ).
+- **UI Updates**:
+  - `MultiLineOrderForm.tsx`: Thêm ô nhập **"GSM sản xuất (thực tế)"** kế bên ô GSM đơn hàng; chip Live preview hiển thị đồng thời cả Trọng lượng PO và Nhu cầu sợi.
+  - `OrderDetail.tsx`: Hiển thị phân biệt **GSM (đơn hàng)** và **GSM sản xuất thực tế** ở View mode & Edit mode.
+
 ### Packages installed (do NOT reinstall)
 - next@14.2.35, react, react-dom, typescript, tailwindcss
 - prisma@5.22.0, @prisma/client@5.22.0
@@ -362,6 +374,7 @@ model ProductionOrder {
   widthM       Float?   // roll width in metres (e.g. 4.0)
   lengthM      Float?   // order length in metres (or calculated total for rolls/pieces)
   gsm          Int?     // grams per square metre (e.g. 165)
+  productionGsm Int?    // GSM sản xuất thực tế (Sprint I2) — optional, dùng tính requiredYarnKg
   color        String?  // e.g. "BLACK", "WHITE"
   mbCode       String?  // Mã Masterbatch màu — e.g. "MYD4501A", "7079", "LS309315"
 

@@ -73,13 +73,14 @@ export async function POST(req: NextRequest) {
     const createPayload = lines.map((line, i) => {
       const lm = effectiveLengthM(line)
       const { qtySqm, totalWeightKgs, requiredYarnKg } = calculateOrderWeight({
-        orderType:  line.orderType ?? 'meters',
-        widthM:     line.widthM ?? null,
-        lengthM:    line.lengthM ?? null,
-        gsm:        line.gsm ?? null,
-        qty:        line.qty ?? null,
-        rollLength: line.rollLength ?? null,
-        pieceLength: line.pieceLength ?? null,
+        orderType:     line.orderType ?? 'meters',
+        widthM:        line.widthM ?? null,
+        lengthM:       line.lengthM ?? null,
+        gsm:           line.gsm ?? null,
+        productionGsm: line.productionGsm ?? null,
+        qty:           line.qty ?? null,
+        rollLength:    line.rollLength ?? null,
+        pieceLength:   line.pieceLength ?? null,
       })
 
       const effectiveOrderDate = orderDate ? new Date(orderDate) : new Date()
@@ -91,7 +92,8 @@ export async function POST(req: NextRequest) {
         isDraft,
         ...(customerId && { customerId }),
         orderDate:   effectiveOrderDate,
-        ...(line.gsm    != null && { gsm:    line.gsm }),
+        ...(line.gsm           != null && { gsm:           line.gsm }),
+        ...(line.productionGsm != null && { productionGsm: line.productionGsm }),
         ...(line.color   && { color:  line.color }),
         ...(line.widthM != null && { widthM: line.widthM }),
         ...(lm != null && lm > 0 && { lengthM: lm }),

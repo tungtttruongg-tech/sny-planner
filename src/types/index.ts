@@ -29,6 +29,7 @@ export interface SerializedProductionOrder {
   widthM: number | null
   lengthM: number | null
   gsm: number | null
+  productionGsm: number | null
   color: string | null
   mbCode: string | null
 
