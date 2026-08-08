@@ -136,6 +136,7 @@ export function parseOrderList(buffer: Buffer): ParsedOrder[] {
 
   // ── Parse data rows ────────────────────────────────────────────────────────
   const results: ParsedOrder[] = []
+  const piSubLineCounters = new Map<string, number>()
 
   for (let i = 0; i < dataRows.length; i++) {
     const row = dataRows[i]
@@ -162,9 +163,17 @@ export function parseOrderList(buffer: Buffer): ParsedOrder[] {
         continue
       }
 
+      // Track row sequence per PI Number (1, 2, 3...)
+      const currentCount = (piSubLineCounters.get(piNumber) ?? 0) + 1
+      piSubLineCounters.set(piNumber, currentCount)
+
+      // Use explicit subLineIndex from Excel if positive integer, else fallback to row sequence
+      const fileSubLine = safeInt(get(subLineColIdx))
+      const subLineIndex = (fileSubLine != null && fileSubLine > 0) ? fileSubLine : currentCount
+
       results.push({
         piNumber,
-        subLineIndex: safeInt(get(subLineColIdx)) ?? 0,
+        subLineIndex,
         customer,
         orderDate,
         widthM,

@@ -83,6 +83,7 @@ export function parsePastedText(text: string): ParsedOrder[] {
 
   const lines = text.split(/\r?\n/)
   const parsedOrders: ParsedOrder[] = []
+  const piCounters = new Map<string, number>()
 
   for (const line of lines) {
     const trimmedLine = line.trim()
@@ -94,10 +95,13 @@ export function parsePastedText(text: string): ParsedOrder[] {
     const piNumber = cols[1]?.trim()
     if (!piNumber) continue
 
-    // Parse Sub-line index (index 2) - required, default 1
+    const count = (piCounters.get(piNumber) ?? 0) + 1
+    piCounters.set(piNumber, count)
+
+    // Parse Sub-line index (index 2) - required, default to row sequence
     const rawSubLine = cols[2]?.trim()
-    const subLineIndex = rawSubLine ? parseInt(rawSubLine, 10) : 1
-    const validSubLine = isNaN(subLineIndex) ? 1 : subLineIndex
+    const parsedSub = rawSubLine ? parseInt(rawSubLine, 10) : NaN
+    const validSubLine = (!isNaN(parsedSub) && parsedSub > 0) ? parsedSub : count
 
     // Parse Customer (index 3) - required
     const customer = cols[3]?.trim()

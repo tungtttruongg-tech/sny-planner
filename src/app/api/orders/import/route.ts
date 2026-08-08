@@ -77,7 +77,30 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // ── 5. Check PI Number customer conflicts ───────────────────────────────
+  // ── 5. Check PI Number customer conflicts & Duplicate subLineIndex ────────
+  const piWarnings: string[] = []
+
+  // Check 5a: Duplicate (piNumber, subLineIndex) in uploaded rows
+  const seenKeys = new Set<string>()
+  let duplicateCount = 0
+  for (const r of rows) {
+    if (r.piNumber) {
+      const key = `${r.piNumber.trim().toUpperCase()}#${r.subLineIndex}`
+      if (seenKeys.has(key)) {
+        duplicateCount++
+      } else {
+        seenKeys.add(key)
+      }
+    }
+  }
+
+  if (duplicateCount > 0) {
+    piWarnings.push(
+      `⚠ Phát hiện ${duplicateCount} dòng trùng số thứ tự (subLineIndex), có thể bị bỏ qua khi import.`
+    )
+  }
+
+  // Check 5b: Customer name mismatch for existing PIs
   const piCustomerMap = new Map<string, string>()
   for (const r of rows) {
     if (r.piNumber && r.customer) {
@@ -85,7 +108,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const piWarnings: string[] = []
   const uniquePis = Array.from(piCustomerMap.keys())
   if (uniquePis.length > 0) {
     const existingOrders = await prisma.productionOrder.findMany({
